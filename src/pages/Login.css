@@ -1,0 +1,390 @@
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;700&family=DM+Sans:wght@300;400;500&display=swap');
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --navy: #004905;
+  --navy-mid: #0f2040;
+  --blue-accent: #1a4a8a;
+  --gold: #c9a84c;
+  --gold-light: #e8c97a;
+  --white: #f5f0e8;
+  --white-dim: rgba(245, 240, 232, 0.6);
+  --glass-bg: rgba(10, 22, 40, 0.6);
+  --glass-border: rgba(201, 168, 76, 0.2);
+}
+
+.login-root {
+  min-height: 100vh;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--navy);
+  font-family: 'DM Sans', sans-serif;
+  overflow: hidden;
+  position: relative;
+}
+
+/* ── Animated background ── */
+.bg-canvas {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  z-index: 0;
+}
+
+.bg-grid {
+  position: absolute;
+  inset: -50%;
+  width: 200%;
+  height: 200%;
+  background-image:
+    linear-gradient(rgba(201,168,76,0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(201,168,76,0.04) 1px, transparent 1px);
+  background-size: 60px 60px;
+  animation: gridDrift 30s linear infinite;
+}
+
+@keyframes gridDrift {
+  0%   { transform: translate(0, 0); }
+  100% { transform: translate(60px, 60px); }
+}
+
+.bg-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  opacity: 0.18;
+  animation: orbFloat 12s ease-in-out infinite alternate;
+}
+
+.bg-orb-1 {
+  width: 600px; height: 600px;
+  background: radial-gradient(circle, #1a4a8a 0%, transparent 70%);
+  top: -150px; left: -150px;
+  animation-duration: 14s;
+}
+
+.bg-orb-2 {
+  width: 400px; height: 400px;
+  background: radial-gradient(circle, #c9a84c 0%, transparent 70%);
+  bottom: -100px; right: -100px;
+  opacity: 0.12;
+  animation-duration: 10s;
+  animation-delay: -4s;
+}
+
+.bg-orb-3 {
+  width: 300px; height: 300px;
+  background: radial-gradient(circle, #0f2040 0%, #1a4a8a 60%, transparent 80%);
+  top: 40%; right: 15%;
+  opacity: 0.25;
+  animation-duration: 18s;
+  animation-delay: -8s;
+}
+
+@keyframes orbFloat {
+  0%   { transform: translate(0, 0) scale(1); }
+  100% { transform: translate(30px, 40px) scale(1.08); }
+}
+
+/* Floating particles */
+.particles {
+  position: absolute;
+  inset: 0;
+}
+
+.particle {
+  position: absolute;
+  width: 2px; height: 2px;
+  border-radius: 50%;
+  background: var(--gold);
+  opacity: 0;
+  animation: particleFly linear infinite;
+}
+
+@keyframes particleFly {
+  0%   { opacity: 0; transform: translateY(0) scale(0); }
+  10%  { opacity: 0.6; }
+  90%  { opacity: 0.3; }
+  100% { opacity: 0; transform: translateY(-100vh) scale(1.5); }
+}
+
+/* ── Card ── */
+.login-card {
+  position: relative;
+  z-index: 1;
+  width: 420px;
+  padding: 52px 48px;
+  background: var(--glass-bg);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid var(--glass-border);
+  border-radius: 4px;
+  box-shadow:
+    0 0 0 1px rgba(201,168,76,0.05),
+    0 32px 80px rgba(0,0,0,0.5),
+    inset 0 1px 0 rgba(201,168,76,0.1);
+  animation: cardReveal 0.9s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes cardReveal {
+  0%   { opacity: 0; transform: translateY(28px) scale(0.97); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* Corner decorations */
+.login-card::before,
+.login-card::after {
+  content: '';
+  position: absolute;
+  width: 18px; height: 18px;
+  border-color: var(--gold);
+  border-style: solid;
+  opacity: 0.5;
+}
+.login-card::before {
+  top: -1px; left: -1px;
+  border-width: 2px 0 0 2px;
+}
+.login-card::after {
+  bottom: -1px; right: -1px;
+  border-width: 0 2px 2px 0;
+}
+
+/* ── Brand ── */
+.brand {
+  text-align: center;
+  margin-bottom: 40px;
+  animation: fadeSlide 0.8s 0.15s cubic-bezier(0.22,1,0.36,1) both;
+}
+
+.brand-logo {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px; height: 56px;
+  border: 1.5px solid rgba(201,168,76,0.5);
+  border-radius: 50%;
+  margin-bottom: 16px;
+  position: relative;
+}
+
+.brand-logo svg {
+  width: 28px; height: 28px;
+  fill: none;
+  stroke: var(--gold);
+  stroke-width: 1.5;
+}
+
+.brand-logo::after {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  border: 1px solid rgba(201,168,76,0.15);
+}
+
+.brand-name {
+  font-family: 'Playfair Display', serif;
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--white);
+  letter-spacing: -0.5px;
+  line-height: 1;
+}
+
+.brand-name span {
+  color: var(--gold);
+}
+
+.brand-tagline {
+  margin-top: 8px;
+  font-size: 11px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--white-dim);
+  font-weight: 300;
+}
+
+/* ── Form ── */
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  animation: fadeSlide 0.8s 0.3s cubic-bezier(0.22,1,0.36,1) both;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.field label {
+  font-size: 10.5px;
+  letter-spacing: 2.5px;
+  text-transform: uppercase;
+  color: rgba(201,168,76,0.7);
+  font-weight: 500;
+}
+
+.input-wrap {
+  position: relative;
+}
+
+.input-wrap svg {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 16px; height: 16px;
+  stroke: rgba(245,240,232,0.3);
+  fill: none;
+  stroke-width: 1.5;
+  transition: stroke 0.25s;
+  pointer-events: none;
+}
+
+.field input {
+  width: 100%;
+  padding: 13px 14px 13px 42px;
+  background: rgba(245,240,232,0.04);
+  border: 1px solid rgba(245,240,232,0.1);
+  border-radius: 3px;
+  color: var(--white);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 14.5px;
+  font-weight: 400;
+  outline: none;
+  transition: border-color 0.25s, background 0.25s, box-shadow 0.25s;
+  caret-color: var(--gold);
+}
+
+.field input::placeholder {
+  color: rgba(245,240,232,0.22);
+}
+
+.field input:focus {
+  border-color: rgba(201,168,76,0.5);
+  background: rgba(245,240,232,0.06);
+  box-shadow: 0 0 0 3px rgba(201,168,76,0.06), 0 0 12px rgba(201,168,76,0.05);
+}
+
+.field input:focus + svg,
+.input-wrap:focus-within svg {
+  stroke: rgba(201,168,76,0.6);
+}
+
+/* Fix icon order (svg after input needs different selector) */
+.input-wrap input:focus ~ svg {
+  stroke: rgba(201,168,76,0.6);
+}
+
+.input-icon-left {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+/* ── Extras ── */
+.form-extras {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: -8px;
+}
+
+.forgot-link {
+  font-size: 12px;
+  color: rgba(201,168,76,0.6);
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.forgot-link:hover {
+  color: var(--gold-light);
+}
+
+/* ── Submit button ── */
+.btn-submit {
+  margin-top: 6px;
+  padding: 15px;
+  background: linear-gradient(135deg, var(--gold) 0%, var(--gold-light) 50%, var(--gold) 100%);
+  background-size: 200% 100%;
+  background-position: right center;
+  border: none;
+  border-radius: 3px;
+  color: var(--navy);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 2.5px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background-position 0.4s ease, box-shadow 0.3s, transform 0.2s;
+  box-shadow: 0 4px 20px rgba(201,168,76,0.25);
+}
+
+.btn-submit:hover {
+  background-position: left center;
+  box-shadow: 0 6px 28px rgba(201,168,76,0.4);
+  transform: translateY(-1px);
+}
+
+.btn-submit:active {
+  transform: translateY(0);
+}
+
+/* ── Divider & footer ── */
+.card-divider {
+  margin: 28px 0 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(201,168,76,0.15), transparent);
+  animation: fadeSlide 0.8s 0.5s cubic-bezier(0.22,1,0.36,1) both;
+}
+
+.card-footer {
+  margin-top: 20px;
+  text-align: center;
+  font-size: 11.5px;
+  color: rgba(245,240,232,0.3);
+  animation: fadeSlide 0.8s 0.55s cubic-bezier(0.22,1,0.36,1) both;
+}
+
+.card-footer a {
+  color: rgba(201,168,76,0.55);
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.card-footer a:hover {
+  color: var(--gold-light);
+}
+
+@keyframes fadeSlide {
+  0%   { opacity: 0; transform: translateY(12px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Error messages ── */
+.field-error {
+  font-size: 11.5px;
+  color: #e07070;
+  letter-spacing: 0.3px;
+  padding-left: 2px;
+  animation: fadeSlide 0.2s ease both;
+}
+
+/* ── Responsive ── */
+@media (max-width: 480px) {
+  .login-card {
+    width: calc(100vw - 32px);
+    padding: 40px 28px;
+  }
+}
