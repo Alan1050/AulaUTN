@@ -4,22 +4,15 @@ import { useNavigate } from 'react-router-dom'
 import { login } from '../lib/auth'
 
 
-// Las partículas se generan fuera porque son estáticas (no cambian nunca)
-const PARTICLES = Array.from({ length: 18 }, (_, i) => ({
-  id: i,
-  left: `${Math.random() * 100}%`,
-  delay: `${Math.random() * 12}s`,
-  duration: `${8 + Math.random() * 10}s`,
-  size: `${1 + Math.random() * 2}px`,
-}))
-
 export default function Login() {
   const navigate = useNavigate()
 
   // ── Estado de los campos ──────────────────────────────────────
   const [matricula, setMatricula] = useState('')
   const [password, setPassword]   = useState('')
-  const [loading, setLoading] = useState(false) // ✅ Estado de carga
+  const [loading, setLoading] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
+   // ✅ Estado de carga
 
   // ── Estado de errores (uno por campo) ────────────────────────
   const [errors, setErrors] = useState({
@@ -134,44 +127,13 @@ export default function Login() {
     }
   }
 
-  return (
+return (
     <div className="login-root">
-
-      <div className="bg-canvas">
-        <div className="bg-grid" />
-        <div className="bg-orb bg-orb-1" />
-        <div className="bg-orb bg-orb-2" />
-        <div className="bg-orb bg-orb-3" />
-        <div className="particles">
-          {PARTICLES.map(p => (
-            <span
-              key={p.id}
-              className="particle"
-              style={{
-                left: p.left,
-                bottom: '-4px',
-                width: p.size,
-                height: p.size,
-                animationDelay: p.delay,
-                animationDuration: p.duration,
-              }}
-            />
-          ))}
-        </div>
-      </div>
-
-      <div className="login-card">
-
-        <div className="brand">
-          <div className="brand-logo">
-            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-              <path d="M12 3L22 9L12 15L2 9L12 3Z" />
-              <path d="M6 11.5V17C6 17 8.5 19.5 12 19.5C15.5 19.5 18 17 18 17V11.5" />
-              <line x1="22" y1="9" x2="22" y2="14" />
-            </svg>
-          </div>
-          <div className="brand-name">Aula<span>UTN</span></div>
-          <div className="brand-tagline">Sistema de Recursos Digitales</div>
+      {/* PANEL IZQUIERDO */}
+      <div className="form-panel">
+        <div className="form-header">
+          <h1 className="form-title">Bienvenido</h1>
+          <p className="form-sub">Ingresa a tu cuenta para continuar.</p>
         </div>
 
         {/* Error general */}
@@ -187,6 +149,11 @@ export default function Login() {
           <div className="field">
             <label htmlFor="matricula">Matrícula / Clave</label>
             <div className="input-wrap">
+              <svg className="input-icon" viewBox="0 0 24 24">
+                <circle cx="12" cy="8" r="5"/>
+                <path d="M20 21a8 8 0 00-16 0"/>
+              </svg>
+
               <input
                 id="matricula"
                 type="text"
@@ -198,14 +165,6 @@ export default function Login() {
                   validarMatricula(e.target.value)
                 }}
               />
-              <svg
-                viewBox="0 0 24 24"
-                xmlns="http://www.w3.org/2000/svg"
-                style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', width: 16, height: 16, stroke: 'rgba(245,240,232,0.3)', fill: 'none', strokeWidth: 1.5, pointerEvents: 'none' }}
-              >
-                <circle cx="12" cy="8" r="4" />
-                <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
-              </svg>
             </div>
             {errors.matricula && (
               <span className="field-error">{errors.matricula}</span>
@@ -214,31 +173,50 @@ export default function Login() {
 
           {/* Contraseña */}
           <div className="field">
-            <label htmlFor="password">Contraseña</label>
+            <label htmlFor="pwd">Contraseña</label>
             <div className="input-wrap">
-              <input
-                id="password"
-                type="password"
-                placeholder="••••••••"
-                autoComplete="current-password"
+              <svg className="input-icon" viewBox="0 0 24 24">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                <path d="M7 11V7a5 5 0 0110 0v4"/>
+              </svg>
+              <input 
+                id="pwd" 
+                type={showPassword ? "text" : "password"}
+                placeholder="••••••••" 
+                className="pw-input"
                 value={password}
                 onChange={e => {
                   setPassword(e.target.value)
                   validarPassword(e.target.value)
                 }}
               />
-              <svg
-                viewBox="0 0 24 24"
-                xmlns="http://www.w3.org/2000/svg"
-                style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', width: 16, height: 16, stroke: 'rgba(245,240,232,0.3)', fill: 'none', strokeWidth: 1.5, pointerEvents: 'none' }}
+              <button 
+                type="button" 
+                className="pw-toggle" 
+                onClick={() => setShowPassword(!showPassword)}
+                tabIndex={-1}
               >
-                <rect x="5" y="11" width="14" height="10" rx="2" />
-                <path d="M8 11V7a4 4 0 018 0v4" />
-              </svg>
+                {showPassword ? (
+                  <svg viewBox="0 0 24 24">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                    <circle cx="12" cy="12" r="3"/>
+                    <line x1="3" y1="3" x2="21" y2="21"/>
+                  </svg>
+                ) : (
+                  <svg viewBox="0 0 24 24">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                    <circle cx="12" cy="12" r="3"/>
+                  </svg>
+                )}
+              </button>
             </div>
             {errors.password && (
               <span className="field-error">{errors.password}</span>
             )}
+          </div>
+
+          <div className="extras">
+            <a className="forgot">¿Olvidaste tu contraseña?</a>
           </div>
 
           {/* Submit */}
@@ -248,14 +226,38 @@ export default function Login() {
 
         </form>
 
-        <div className="card-divider" />
-
-        <p className="card-footer">
-          ¿Problemas para Acceder?&nbsp;
-          <a href="#">Contactar a Servicios Informáticos</a>
-        </p>
+        <div className="divider"></div>
+        <p className="footer">¿Necesitas ayuda? <a>Soporte UTN</a></p>
       </div>
 
+      {/* PANEL DERECHO */}
+      <div className="visual-panel">
+        <div className="visual-bg-glow"></div>
+        <div className="visual-accent-circle"></div>
+        
+        <div className="visual-top">
+          <div className="visual-logo">
+            <div className="visual-logo-icon">
+              <svg viewBox="0 0 24 24">
+                <path d="M12 2L22 7L12 12L2 7L12 2Z"/>
+                <path d="M2 17L12 22L22 17"/>
+                <path d="M2 12L12 17L22 12"/>
+              </svg>
+            </div>
+            <div className="visual-logo-name">Aula<span>UTN</span></div>
+          </div>
+        </div>
+
+        <div className="visual-middle">
+          <div className="visual-heading">Espacio Digital <em>de Aprendizaje</em></div>
+          <p className="visual-sub">
+            Plataforma centralizada en material didactico, actividades y seguimiento académico para la comunidad UTN. </p>
+        </div>
+
+        <div className="visual-bottom">
+          <p className="visual-tagline"> Universidad Tecnológica de Nayarit </p>
+        </div>
+      </div>
     </div>
   )
 }
