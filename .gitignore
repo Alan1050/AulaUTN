@@ -25,3 +25,7 @@ dist-ssr
 
 .env
 .env.*.local
+
+#Agente de desarrollo
+.agents
+skills-lock.json

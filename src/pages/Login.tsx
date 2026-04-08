@@ -1,7 +1,8 @@
 import './Login.css'
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { login } from '../lib/auth' // ✅ Importar la función login
+import { login } from '../lib/auth'
+
 
 // Las partículas se generan fuera porque son estáticas (no cambian nunca)
 const PARTICLES = Array.from({ length: 18 }, (_, i) => ({
@@ -71,7 +72,6 @@ export default function Login() {
     // Validaciones
     validarMatricula(matricula)
     validarPassword(password)
-
     const hayErrores = !matricula || !password || errors.matricula || errors.password
     if (hayErrores) {
       console.log('❌ Validación fallida:', { matricula, password, errors })
@@ -86,6 +86,7 @@ export default function Login() {
     })
 
     try {
+
       const result = await login(matricula, password)
       
       console.log('📦 Resultado del login:', result)

@@ -177,28 +177,52 @@ async function generarTokenResetPassword(email: string): Promise<string> {
   
   return token
 }
-
-// ── LOGIN PRINCIPAL MODIFICADO ─────────────────────────────────
+// LOGIN PRINCIPAL
 export async function login(
   identificador: string,
   contrasena:    string
 ): Promise<{ rol: Rol; requiereCambioPassword?: boolean } | { error: string }> {
 
+  console.log('🔐 ===== INICIO DE LOGIN =====')
+
   const esAlumno = identificador.startsWith('TIC-')
 
   if (esAlumno) {
-    // ── Busca en tabla Alumnos ─────────────────────────────────
+    console.log('👨‍🎓 Modo: ALUMNO')
+    
     const { data, error } = await supabase
       .from('Alumnos')
       .select('id, nombre, apellidoPaterno, matricula, contrasena, email')
       .eq('matricula', identificador)
       .single()
 
-    if (error || !data) return { error: 'Matrícula o contraseña incorrectos' }
+    console.log('📊 Resultado Supabase Alumnos:', { 
+      encontrado: !!data,
+      error: error ? {
+        message: error.message,
+        code: error.code,
+        details: error.details,
+        hint: error.hint
+      } : null 
+    })
+
+    if (error || !data) {
+      console.error('❌ Alumno no encontrado o error:', error)
+      return { error: 'Matrícula o contraseña incorrectos' }
+    }
     
     // Verificar contraseña
+    console.log('🔐 Verificando contraseña:', {
+      dbPassword: data.contrasena,
+      inputPassword: contrasena,
+      match: data.contrasena === contrasena
+    })
+    
     const passwordMatch = data.contrasena === contrasena
-    if (!passwordMatch) return { error: 'Matrícula o contraseña incorrectos' }
+    if (!passwordMatch) {
+      console.log('❌ Contraseña incorrecta')
+      return { error: 'Matrícula o contraseña incorrectos' }
+    }
     
     // ⭐ CRITERIO PRINCIPAL: ¿La contraseña es IGUAL a la matrícula?
     const passwordEsIgualMatricula = esPasswordIgualAIdentificador(
@@ -215,8 +239,10 @@ export async function login(
     
     // Si la contraseña es igual a la matrícula → enviar correo
     if (passwordEsIgualMatricula) {
+      console.log('⚠️ Contraseña igual a matrícula - Requiere cambio')
+      
       if (!data.email) {
-        console.error('El alumno no tiene email registrado:', data.matricula)
+        console.error('❌ El alumno no tiene email registrado:', data.matricula)
         return { error: 'No hay correo registrado para notificaciones de seguridad' }
       }
       
@@ -230,7 +256,7 @@ export async function login(
       )
       
       if (!emailEnviado) {
-        console.error('Error al enviar correo a:', data.email)
+        console.error('❌ Error al enviar correo a:', data.email)
       }
       
       // Crear sesión con flag de cambio requerido (NO permite acceso)
@@ -246,6 +272,7 @@ export async function login(
     }
     
     // ✅ Login normal (contraseña válida y diferente a la matrícula)
+    console.log('✅ Login exitoso - Alumno')
     await guardarSesion({
       id: data.id,
       nombre: `${data.nombre} ${data.apellidoPaterno}`,
@@ -256,20 +283,78 @@ export async function login(
     return { rol: 'alumno' }
 
   } else {
+    console.log('👨‍🏫 Modo: DOCENTE')
+    
     // ── Busca en tabla Docentes ────────────────────────────────
+    console.log('🔍 Buscando en tabla Docentes con clave:', identificador)
+    console.log('📋 Tipo de identificador:', typeof identificador)
+    console.log('📋 Valor exacto:', `"${identificador}"`)
+    
     const { data, error } = await supabase
       .from('Docentes')
       .select('id, nombre, apellidoPaterno, clave, contrasena, email')
       .eq('clave', identificador)
       .single()
 
-    if (error || !data) return { error: 'Clave o contraseña incorrectos' }
+    // Log detallado del resultado
+    console.log('📊 Resultado Supabase Docentes:', { 
+      encontrado: !!data,
+      data: data ? {
+        id: data.id,
+        nombre: data.nombre,
+        clave: data.clave,
+        contrasena: data.contrasena,
+        tieneEmail: !!data.email
+      } : null,
+      error: error ? {
+        message: error.message,
+        code: error.code,
+        details: error.details,
+        hint: error.hint
+      } : null 
+    })
+
+    if (error) {
+      console.error('❌ Error en consulta Supabase:', {
+        message: error.message,
+        code: error.code,
+        details: error.details,
+        hint: error.hint
+      })
+      
+      // Error específico cuando no se encuentra ningún registro
+      if (error.code === 'PGRST116') {
+        console.log('❌ No se encontró docente con clave:', identificador)
+        return { error: 'Clave o contraseña incorrectos' }
+      }
+      
+      return { error: 'Error de conexión con la base de datos' }
+    }
+    
+    if (!data) {
+      console.log('❌ No se encontró docente con clave:', identificador)
+      return { error: 'Clave o contraseña incorrectos' }
+    }
     
     // Verificar contraseña
-    const passwordMatch = data.contrasena === contrasena
-    if (!passwordMatch) return { error: 'Clave o contraseña incorrectos' }
+    console.log('🔐 Verificando contraseña docente:', {
+      dbPassword: data.contrasena,
+      dbPasswordType: typeof data.contrasena,
+      inputPassword: contrasena,
+      inputPasswordType: typeof contrasena,
+      match: data.contrasena === contrasena,
+      comparacionExacta: `"${data.contrasena}" === "${contrasena}"`
+    })
     
-    // ⭐ CRITERIO PRINCIPAL: ¿La contraseña es IGUAL a la clave del docente?
+    const passwordMatch = data.contrasena === contrasena
+    if (!passwordMatch) {
+      console.log('❌ Contraseña incorrecta para docente')
+      return { error: 'Clave o contraseña incorrectos' }
+    }
+    
+    console.log('✅ Contraseña correcta')
+    
+    // ¿La contraseña es IGUAL a la clave del docente?
     const passwordEsIgualClave = esPasswordIgualAIdentificador(
       contrasena, 
       data.clave, 
@@ -284,8 +369,10 @@ export async function login(
     
     // Si la contraseña es igual a la clave → enviar correo
     if (passwordEsIgualClave) {
+      console.log('⚠️ Contraseña igual a clave - Requiere cambio')
+      
       if (!data.email) {
-        console.error('El docente no tiene email registrado:', data.clave)
+        console.error('❌ El docente no tiene email registrado:', data.clave)
         return { error: 'No hay correo registrado para notificaciones de seguridad' }
       }
       
@@ -299,7 +386,7 @@ export async function login(
       )
       
       if (!emailEnviado) {
-        console.error('Error al enviar correo a:', data.email)
+        console.error('❌ Error al enviar correo a:', data.email)
       }
       
       // Crear sesión con flag de cambio requerido (NO permite acceso)
@@ -315,6 +402,7 @@ export async function login(
     }
     
     // ✅ Login normal (contraseña válida y diferente a la clave)
+    console.log('✅ Login exitoso - Docente')
     await guardarSesion({
       id: data.id,
       nombre: `${data.nombre} ${data.apellidoPaterno}`,
@@ -322,6 +410,7 @@ export async function login(
       clave: data.clave,
       passwordChangeRequired: false
     })
+    console.log('🔐 ===== FIN LOGIN (EXITOSO) =====')
     return { rol: 'docente' }
   }
 }
@@ -342,10 +431,18 @@ export async function cambiarPassword(
     .eq(campoId, identificador)
     .single()
   
-  if (usuario && usuario[campoId] === nuevaPassword) {
-    return { 
-      success: false, 
-      error: 'La nueva contraseña no puede ser igual a tu matrícula o clave' 
+  // SOLUCIÓN: Acceder de forma segura a la propiedad usando type assertion
+  if (usuario) {
+    // Usamos type assertion para decirle a TypeScript qué tipo de objeto es
+    const valorIdentificador = tipo === 'alumno' 
+      ? (usuario as { matricula: string }).matricula 
+      : (usuario as { clave: string }).clave
+    
+    if (valorIdentificador === nuevaPassword) {
+      return { 
+        success: false, 
+        error: 'La nueva contraseña no puede ser igual a tu matrícula o clave' 
+      }
     }
   }
   
