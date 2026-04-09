@@ -103,8 +103,9 @@ export default function DashboardAlumno() {
                   <div className="course-avatar" style={{ backgroundColor: 'rgba(176, 125, 79, 0.15)' }}>R</div>
                   <span className="course-title">Redes</span>
                 </div>
-                <div className="nav-item course-item" onClick={() => irAMateria('redes')}>
-                  <div className="course-avatar" style={{ backgroundColor: 'rgba(176, 125, 79, 0.15)' }}>R</div>
+                
+                <div className="nav-item course-item" onClick={() => irAMateria('dise-web')}>
+                  <div className="course-avatar" style={{ backgroundColor: 'rgba(176, 125, 79, 0.15)' }}>D</div>
                   <span className="course-title">Diseño web</span>
                 </div>
               </div>
@@ -169,7 +170,7 @@ export default function DashboardAlumno() {
                   <p className="mat-desc">Protocolos, TCP/IP y seguridad</p>
                 </div>
 
-                <div className="materia-card" onClick={() => irAMateria('ing-software')}>
+                <div className="materia-card" onClick={() => irAMateria('dise-web')}>
                   <p className="mat-name">Diseño web</p>
                 </div>
 
