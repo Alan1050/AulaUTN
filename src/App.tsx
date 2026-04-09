@@ -7,6 +7,8 @@ import Sitemap from './pages/SiteMap';
 import CambiarPassword from './pages/CambiarPassword';
 import Unauthorized from './pages/Unauthorized';
 import { ProtectedRoute } from './components/ProtectedRoute';
+import PanelMateria from './pages/PanelMateria'
+
 
 function App() {
   return (
@@ -37,6 +39,16 @@ function App() {
             <ProtectedRoute allowedRoles={['alumno']}>
               <DashboardAlumnos />
             </ProtectedRoute>
+          } 
+        />
+       
+       {/* Panel Materia */ } 
+       <Route 
+         path="/Alumno/materia/:id" 
+         element={
+           <ProtectedRoute allowedRoles={['alumno']}>
+             <PanelMateria />
+           </ProtectedRoute>
           } 
         />
 
