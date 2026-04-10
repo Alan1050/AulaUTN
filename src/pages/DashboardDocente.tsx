@@ -1,12 +1,91 @@
 import './DashboardDocente.css'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { obtenerGruposDocente, obtenerEstadisticasDocente, obtenerInfoDocente } from '../lib/docenteQueries'
+import type { GrupoDocente, EstadisticasDocente } from '../lib/docenteQueries'
+import { logout } from '../lib/auth'
 
 export default function DashboardDocente() {
   const [collapsed, setCollapsed] = useState(false)
   const [activeNav, setActiveNav] = useState('inicio')
   const [gruposOpen, setGruposOpen] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [docenteInfo, setDocenteInfo] = useState<{ nombre: string; apellidoPaterno: string } | null>(null)
+  const [grupos, setGrupos] = useState<GrupoDocente[]>([])
+  const [estadisticas, setEstadisticas] = useState<EstadisticasDocente>({
+    grupos_activos: 0,
+    total_alumnos: 0,
+    materiales_subidos: 0
+  })
+  
   const navigate = useNavigate()
+
+  // Cargar datos del docente
+  useEffect(() => {
+    const cargarDatos = async () => {
+      setLoading(true)
+      
+      try {
+        // Obtener información del docente
+        const info = await obtenerInfoDocente()
+        if (info) {
+          setDocenteInfo({
+            nombre: info.nombre,
+            apellidoPaterno: info.apellidoPaterno
+          })
+        }
+        
+        // Obtener grupos
+        const gruposData = await obtenerGruposDocente()
+        setGrupos(gruposData)
+        
+        // Obtener estadísticas
+        const stats = await obtenerEstadisticasDocente()
+        setEstadisticas(stats)
+        
+      } catch (error) {
+        console.error('Error al cargar datos del dashboard:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+    
+    cargarDatos()
+  }, [])
+
+  // Manejar cierre de sesión
+  const handleLogout = () => {
+    logout()
+    navigate('/login')
+  }
+
+  // Navegar a un grupo específico
+  const handleGrupoClick = (grupoId: number, grupoNombre: string) => {
+    // Puedes navegar a una ruta como /Docente/grupo/:id
+    navigate(`/Docente/grupo/${grupoId}`, { state: { grupoNombre, grupoId } })
+  }
+
+  // Obtener iniciales del nombre para el avatar
+  const getInitials = () => {
+    if (!docenteInfo) return '??'
+    const nombreInicial = docenteInfo.nombre ? docenteInfo.nombre.charAt(0).toUpperCase() : ''
+    const apellidoInicial = docenteInfo.apellidoPaterno ? docenteInfo.apellidoPaterno.charAt(0).toUpperCase() : ''
+    return `${nombreInicial}${apellidoInicial}`
+  }
+
+  // Obtener nombre completo para el saludo
+  const getNombreCompleto = () => {
+    if (!docenteInfo) return 'Docente'
+    return docenteInfo.nombre
+  }
+
+  if (loading) {
+    return (
+      <div className="dashboard loading">
+        <div className="loading-spinner">Cargando dashboard...</div>
+      </div>
+    )
+  }
 
   return (
     <div className="dashboard">
@@ -29,9 +108,11 @@ export default function DashboardDocente() {
         </div>
 
         <div className="sb-user">
-          <div className="sb-avatar">MP</div>
+          <div className="sb-avatar">{getInitials()}</div>
           <div className="sb-info">
-            <div className="sb-uname">Mtro. Pedro Garcia</div>
+            <div className="sb-uname">
+              {docenteInfo ? `Mtro. ${docenteInfo.nombre} ${docenteInfo.apellidoPaterno}` : 'Docente'}
+            </div>
             <div className="sb-uid">Docente</div>
           </div>
         </div>
@@ -72,21 +153,29 @@ export default function DashboardDocente() {
 
             {gruposOpen && (
               <div className="accordion-content">
-                <div className="nav-item course-item" onClick={() => navigate('')}>
-                  <div className="course-avatar" style={{backgroundColor: 'rgba(229, 198, 135, 0.15)'}}>81</div>
-                  <span className="course-title">IDGS 81</span>
-                </div>
-                <div className="nav-item course-item" onClick={() => navigate('')}>
-                  <div className="course-avatar" style={{backgroundColor: 'rgba(229, 198, 135, 0.15)'}}>82</div>
-                  <span className="course-title">IDGS 82</span>
-                </div>
+                {grupos.length > 0 ? (
+                  grupos.map((grupo) => (
+                    <div 
+                      key={grupo.id}
+                      className="nav-item course-item" 
+                      onClick={() => handleGrupoClick(grupo.id, grupo.nombre)}
+                    >
+                      <div className="course-avatar" style={{backgroundColor: 'rgba(229, 198, 135, 0.15)'}}>
+                        {grupo.nombre.replace(/[^0-9]/g, '').slice(-2) || 'G'}
+                      </div>
+                      <span className="course-title">{grupo.nombre}</span>
+                    </div>
+                  ))
+                ) : (
+                  <div className="no-grupos-msg">No hay grupos asignados</div>
+                )}
               </div>
             )}
           </div>
         </nav>
 
         <div className="sb-footer">
-          <button className="logout-btn">
+          <button className="logout-btn" onClick={handleLogout}>
             <svg viewBox="0 0 24 24" stroke="currentColor" fill="none" strokeWidth="1.5">
               <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
             </svg>
@@ -98,38 +187,50 @@ export default function DashboardDocente() {
       {/* CONTENIDO PRINCIPAL */}
       <main className="main">
         <header className="topbar">
-          <h1 className="topbar-title">Hola, Pedro</h1>
+          <h1 className="topbar-title">Hola, {getNombreCompleto()}</h1>
         </header>
 
         <div className="content">
           <div className="stats-row">
             <div className="stat-card">
               <p className="stat-label">Grupos activos</p>
-              <p className="stat-val">6</p>
+              <p className="stat-val">{estadisticas.grupos_activos}</p>
               <p className="stat-sub">Este cuatrimestre</p>
             </div>
             <div className="stat-card">
               <p className="stat-label">Total alumnos</p>
-              <p className="stat-val">142</p>
+              <p className="stat-val">{estadisticas.total_alumnos}</p>
               <p className="stat-sub">Inscritos</p>
             </div>
             <div className="stat-card">
               <p className="stat-label">Material subido</p>
-              <p className="stat-val">38</p>
+              <p className="stat-val">{estadisticas.materiales_subidos}</p>
               <p className="stat-sub">Recursos publicados</p>
             </div>
           </div>
 
           <p className="section-title">Mis grupos</p>
           <div className="grupos-grid">
-            <div className="grupo-card c1" onClick={() => navigate('')}>
-              <p className="gc-nombre">Grupo IDGS 81</p>
-              <p className="gc-materia">Admin de Base de Datos</p>
-            </div>
-            <div className="grupo-card c2" onClick={() => navigate('')}>
-              <p className="gc-nombre">Grupo IDGS 82</p>
-              <p className="gc-materia">Admin de Base de Datos</p>
-            </div>
+            {grupos.length > 0 ? (
+              grupos.map((grupo, index) => (
+                <div 
+                  key={grupo.id}
+                  className={`grupo-card c${(index % 3) + 1}`} 
+                  onClick={() => handleGrupoClick(grupo.id, grupo.nombre)}
+                >
+                  <p className="gc-nombre">Grupo {grupo.nombre}</p>
+                  <p className="gc-materia">{grupo.materia}</p>
+                  {grupo.cuatrimestre && (
+                    <p className="gc-cuatrimestre">{grupo.cuatrimestre}</p>
+                  )}
+                </div>
+              ))
+            ) : (
+              <div className="no-grupos-card">
+                <p>No tienes grupos asignados</p>
+                <p className="no-grupos-sub">El Administrador de carrera te asignara uno pronto</p>
+              </div>
+            )}
           </div>
         </div>
       </main>
