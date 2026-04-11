@@ -1,7 +1,12 @@
 import './DashboardDocente.css'
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { obtenerGruposDocente, obtenerEstadisticasDocente, obtenerInfoDocente } from '../lib/docenteQueries'
+import { 
+  obtenerGruposDocente, 
+  obtenerEstadisticasDocente, 
+  obtenerInfoDocente,
+  obtenerEstadisticasAvanzadasDocente 
+} from '../lib/docenteQueries'
 import type { GrupoDocente, EstadisticasDocente } from '../lib/docenteQueries'
 import { logout } from '../lib/auth'
 
@@ -16,6 +21,13 @@ export default function DashboardDocente() {
     grupos_activos: 0,
     total_alumnos: 0,
     materiales_subidos: 0
+  })
+  
+  // Estado para estadísticas avanzadas
+  const [estadisticasAvanzadas, setEstadisticasAvanzadas] = useState({
+    total_preguntas: 0,
+    total_examenes: 0,
+    total_descargas: 0
   })
   
   const navigate = useNavigate()
@@ -39,9 +51,15 @@ export default function DashboardDocente() {
         const gruposData = await obtenerGruposDocente()
         setGrupos(gruposData)
         
-        // Obtener estadísticas
+        // Obtener estadísticas básicas
         const stats = await obtenerEstadisticasDocente()
         setEstadisticas(stats)
+        
+        // Obtener estadísticas avanzadas
+        const statsAvanzadas = await obtenerEstadisticasAvanzadasDocente()
+        if (statsAvanzadas) {
+          setEstadisticasAvanzadas(statsAvanzadas)
+        }
         
       } catch (error) {
         console.error('Error al cargar datos del dashboard:', error)
@@ -60,9 +78,14 @@ export default function DashboardDocente() {
   }
 
   // Navegar a un grupo específico
-  const handleGrupoClick = (grupoId: number, grupoNombre: string) => {
-    // Puedes navegar a una ruta como /Docente/grupo/:id
-    navigate(`/Docente/grupo/${grupoId}`, { state: { grupoNombre, grupoId } })
+  const handleGrupoClick = (grupoId: number, grupoNombre: string, materia: string) => {
+    navigate(`/Docente/grupo/${grupoId}`, { 
+      state: { 
+        grupoNombre, 
+        grupoId,
+        materia 
+      } 
+    })
   }
 
   // Obtener iniciales del nombre para el avatar
@@ -158,7 +181,7 @@ export default function DashboardDocente() {
                     <div 
                       key={grupo.id}
                       className="nav-item course-item" 
-                      onClick={() => handleGrupoClick(grupo.id, grupo.nombre)}
+                      onClick={() => handleGrupoClick(grupo.id, grupo.nombre, grupo.materia)}
                     >
                       <div className="course-avatar" style={{backgroundColor: 'rgba(229, 198, 135, 0.15)'}}>
                         {grupo.nombre.replace(/[^0-9]/g, '').slice(-2) || 'G'}
@@ -191,6 +214,7 @@ export default function DashboardDocente() {
         </header>
 
         <div className="content">
+          {/* Primera fila de estadísticas - Básicas */}
           <div className="stats-row">
             <div className="stat-card">
               <p className="stat-label">Grupos activos</p>
@@ -209,6 +233,34 @@ export default function DashboardDocente() {
             </div>
           </div>
 
+          {/* Segunda fila de estadísticas - Avanzadas */}
+          <div className="stats-row-avanzadas">
+            <div className="stat-card avanzada">
+              <div className="stat-icon">📝</div>
+              <div>
+                <p className="stat-label">Banco de preguntas</p>
+                <p className="stat-val">{estadisticasAvanzadas.total_preguntas}</p>
+                <p className="stat-sub">Preguntas creadas</p>
+              </div>
+            </div>
+            <div className="stat-card avanzada">
+              <div className="stat-icon">📋</div>
+              <div>
+                <p className="stat-label">Exámenes</p>
+                <p className="stat-val">{estadisticasAvanzadas.total_examenes}</p>
+                <p className="stat-sub">Evaluaciones creadas</p>
+              </div>
+            </div>
+            <div className="stat-card avanzada">
+              <div className="stat-icon">📥</div>
+              <div>
+                <p className="stat-label">Descargas</p>
+                <p className="stat-val">{estadisticasAvanzadas.total_descargas}</p>
+                <p className="stat-sub">Total de descargas</p>
+              </div>
+            </div>
+          </div>
+
           <p className="section-title">Mis grupos</p>
           <div className="grupos-grid">
             {grupos.length > 0 ? (
@@ -216,7 +268,7 @@ export default function DashboardDocente() {
                 <div 
                   key={grupo.id}
                   className={`grupo-card c${(index % 3) + 1}`} 
-                  onClick={() => handleGrupoClick(grupo.id, grupo.nombre)}
+                  onClick={() => handleGrupoClick(grupo.id, grupo.nombre, grupo.materia)}
                 >
                   <p className="gc-nombre">Grupo {grupo.nombre}</p>
                   <p className="gc-materia">{grupo.materia}</p>

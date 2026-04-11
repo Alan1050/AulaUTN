@@ -8,6 +8,7 @@ import CambiarPassword from './pages/CambiarPassword';
 import Unauthorized from './pages/Unauthorized';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import PanelMateria from './pages/PanelMateria'
+import GrupoPage from './pages/Docente/GrupoPage'
 
 
 function App() {
@@ -28,6 +29,7 @@ function App() {
           element={
             <ProtectedRoute allowedRoles={['docente']}>
               <DashboardDocente />
+              <Route path="/Docente/grupo/:id" element={<GrupoPage />} />
             </ProtectedRoute>
           } 
         />
