@@ -464,3 +464,127 @@
   .two-col   { grid-template-columns: 1fr; }
   .stats-row { grid-template-columns: 1fr; }
 }
+
+/* Loading state */
+.dashboard.loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+}
+
+.loading-spinner {
+  font-size: 1.2rem;
+  color: #4F46E5;
+}
+
+/* No data messages */
+.no-materias-msg,
+.no-materias-card,
+.no-avisos {
+  text-align: center;
+  padding: 20px;
+  color: #6b7280;
+}
+
+.no-materias-card {
+  grid-column: 1 / -1;
+  padding: 40px;
+  background: #f9fafb;
+  border-radius: 12px;
+}
+
+.no-materias-sub {
+  font-size: 0.875rem;
+  margin-top: 8px;
+  color: #9ca3af;
+}
+
+/* Materia card enhancements */
+.materia-card {
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.materia-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+}
+
+.mat-cuatrimestre {
+  font-size: 0.75rem;
+  color: #6b7280;
+  margin-top: 8px;
+}
+
+/* Aviso enhancements */
+.aviso-dot {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+
+.aviso-dot.info {
+  background-color: rgba(79, 70, 229, 0.1);
+  color: #4F46E5;
+}
+
+.aviso-dot.warn {
+  background-color: rgba(245, 158, 11, 0.1);
+  color: #f59e0b;
+}
+
+.aviso-dot.danger {
+  background-color: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+}
+
+.aviso-desc {
+  font-size: 0.75rem;
+  color: #6b7280;
+  margin-top: 4px;
+}
+
+/* Accordion styles */
+.chevron {
+  transition: transform 0.2s;
+  width: 16px;
+  height: 16px;
+}
+
+.chevron.open {
+  transform: rotate(180deg);
+}
+
+.accordion-content {
+  margin-left: 24px;
+  overflow: hidden;
+}
+
+.course-item {
+  cursor: pointer;
+  padding: 8px 12px !important;
+  margin: 4px 0;
+  border-radius: 8px;
+}
+
+.course-item:hover {
+  background-color: rgba(229, 198, 135, 0.1);
+}
+
+.course-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #e5c687;
+}
