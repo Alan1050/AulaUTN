@@ -254,6 +254,9 @@
 
 .sidebar.collapsed .course-title { display: none; }
 
+.sidebar.collapsed .accordion-content {
+  display: none;
+}
 /* logout */
 .sb-footer {
   padding: 12px 8px;

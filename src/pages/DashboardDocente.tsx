@@ -158,9 +158,14 @@ export default function DashboardDocente() {
             <div 
               className={`nav-item ${activeNav === 'grupos' ? 'active' : ''}`} 
               onClick={() => {
-                setActiveNav('grupos')
-                setGruposOpen(!gruposOpen)
-              }}
+              if (collapsed) {
+                      setCollapsed(false)
+                      setGruposOpen(true)
+              } else {
+                     setGruposOpen(!gruposOpen)
+                     }
+                     setActiveNav('grupos')
+                    }}
               style={{ justifyContent: 'space-between', paddingRight: '12px' }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>

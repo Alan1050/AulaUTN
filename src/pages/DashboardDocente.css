@@ -214,7 +214,9 @@
   padding: 9px;
   border-left: 2px solid transparent;
 }
-
+.sidebar.collapsed .accordion-content {
+  display: none;
+}
 .sidebar.collapsed .nav-item.active {
   border-left-color: var(--gold);
 }

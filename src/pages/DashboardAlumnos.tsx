@@ -193,8 +193,13 @@ export default function DashboardAlumno() {
             <div
               className={`nav-item ${activeNav === 'materias' ? 'active' : ''}`}
               onClick={() => {
-                setActiveNav('materias')
-                setMateriasOpen(!materiasOpen)
+              if (collapsed) {
+                     setCollapsed(false)
+                     setMateriasOpen(true)
+              } else {
+                     setMateriasOpen(!materiasOpen)
+                    }
+                     setActiveNav('materias')
               }}
               style={{ justifyContent: 'space-between', paddingRight: '12px' }}
             >
