@@ -200,7 +200,7 @@ export default function DashboardAlumno() {
                      setMateriasOpen(!materiasOpen)
                     }
                      setActiveNav('materias')
-              }}
+                    }}
               style={{ justifyContent: 'space-between', paddingRight: '12px' }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>

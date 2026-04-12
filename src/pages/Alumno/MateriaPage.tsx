@@ -9,6 +9,7 @@ import {
   type ExamenAlumno
 } from '../../lib/alumnoQueries'
 import { formatTiempoRelativo } from '../../lib/alumnoQueries'
+import './MateriaPage.css'
 
 export default function MateriaPage() {
   const location = useLocation()
@@ -19,6 +20,9 @@ export default function MateriaPage() {
   const [materiales, setMateriales] = useState<MaterialAlumno[]>([])
   const [examenes, setExamenes] = useState<ExamenAlumno[]>([])
   const [loading, setLoading] = useState(true)
+
+  const [collapsed, setCollapsed] = useState(false)
+  const [materiasOpen, setMateriasOpen] = useState(false)
 
   useEffect(() => {
     if (materiaId) {
@@ -79,68 +83,163 @@ export default function MateriaPage() {
   }
 
   return (
-    <div className="materia-page">
-      <div className="materia-header">
-        <button onClick={() => navigate('/Alumno')} className="back-btn">
-          ← Volver
-        </button>
-        <h1>{materiaNombre}</h1>
-      </div>
+    <div className="mp-root">
+     
+      {/* Sidebar */}
+      <aside className={`sidebar${collapsed ? ' collapsed' : ''}`}>
+        <div className="sb-top">
+          <button className="toggle-btn" onClick={() => setCollapsed(v => !v)}>
+            <svg viewBox="0 0 24 24" stroke="currentColor" fill="none" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="3" y1="12" x2="21" y2="12"/>
+              <line x1="3" y1="6" x2="21" y2="6"/>
+              <line x1="3" y1="18" x2="21" y2="18"/>
+            </svg>
+          </button>
+          <div className="sb-logo">
+            <div className="sb-logo-icon">
+              <svg viewBox="0 0 24 24" stroke="currentColor" fill="none" strokeWidth="1.5">
+                <path d="M12 3L22 9L12 15L2 9L12 3Z"/>
+                <path d="M6 11.5V17c0 0 2.5 2.5 6 2.5s6-2.5 6-2.5V11.5"/>
+                <line x1="22" y1="9" x2="22" y2="14"/>
+              </svg>
+            </div>
+            <span className="sb-logo-name">Aula<span>UTN</span></span>
+          </div>
+        </div>
 
-      <div className="tabs-container">
-        <button 
-          className={`tab ${activeTab === 'recursos' ? 'active' : ''}`}
-          onClick={() => setActiveTab('recursos')}
-        >
-          📚 Recursos Digitales
-        </button>
-        <button 
-          className={`tab ${activeTab === 'examenes' ? 'active' : ''}`}
-          onClick={() => setActiveTab('examenes')}
-        >
-          📋 Exámenes
-        </button>
-      </div>
+        <div className="sb-user">
+          <div className="sb-avatar">AL</div>
+          <div className="sb-info">
+            <div className="sb-uname">Alumno</div>
+            <div className="sb-uid">TIC-000000</div>
+          </div>
+        </div>
 
-      <div className="tab-content">
-        {loading ? (
-          <div className="loading">Cargando...</div>
-        ) : activeTab === 'recursos' ? (
-          <div className="materiales-grid">
-            {materiales.length === 0 ? (
-              <div className="empty-state">
-                <p>No hay recursos disponibles</p>
+        <nav className="sb-nav">
+          <p className="sb-section">Principal</p>
+          <div className="nav-item" onClick={() => navigate('/Alumno')}>
+            <svg viewBox="0 0 24 24" stroke="currentColor" fill="none" strokeWidth="1.5">
+              <rect x="3" y="3" width="7" height="7" rx="1"/>
+              <rect x="14" y="3" width="7" height="7" rx="1"/>
+              <rect x="3" y="14" width="7" height="7" rx="1"/>
+              <rect x="14" y="14" width="7" height="7" rx="1"/>
+            </svg>
+            <span className="nav-label">Inicio</span>
+          </div>
+
+          <div>
+            <div
+              className="nav-item active"
+              onClick={() => {
+                if (collapsed) {
+                  setCollapsed(false)
+                  setMateriasOpen(true)
+                } else {
+                  setMateriasOpen(v => !v)
+                }
+              }}
+              style={{ justifyContent: 'space-between', paddingRight: '12px' }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <svg viewBox="0 0 24 24" stroke="currentColor" fill="none" strokeWidth="1.5">
+                  <path d="M4 19.5A2.5 2.5 0 016.5 17H20"/>
+                  <path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/>
+                </svg>
+                <span className="nav-label">Materias</span>
               </div>
-            ) : (
-              materiales.map(material => (
-                <div key={material.id} className="material-card">
-                  <div className="material-icon">{getIconoTipo(material.tipo)}</div>
-                  <div className="material-info">
-                    <h3>{material.titulo}</h3>
-                    <p>{material.descripcion}</p>
-                    <div className="material-meta">
-                      <span>👨‍🏫 {material.docente_nombre}</span>
-                      <span>📅 {formatTiempoRelativo(material.created_at)}</span>
-                      <span>📥 {material.descargas} descargas</span>
-                    </div>
-                    {material.etiquetas?.length > 0 && (
-                      <div className="etiquetas">
-                        {material.etiquetas.map(et => (
-                          <span key={et} className="etiqueta">{et}</span>
-                        ))}
-                      </div>
-                    )}
+              <svg className={`chevron${materiasOpen ? ' open' : ''}`} viewBox="0 0 24 24" stroke="currentColor" fill="none" strokeWidth="2">
+                <polyline points="6 9 12 15 18 9"/>
+              </svg>
+            </div>
+
+            {materiasOpen && (
+              <div className="accordion-content">
+                <div className="nav-item course-item active">
+                  <div className="course-avatar" style={{ backgroundColor: 'rgba(229, 198, 135, 0.15)' }}>
+                    {materiaNombre?.charAt(0).toUpperCase()}
                   </div>
-                  <button 
-                    onClick={() => handleDescargar(material)}
-                    className="btn-descargar"
-                  >
-                    {material.tipo === 'enlace' ? 'Abrir enlace' : 'Descargar'}
-                  </button>
+                  <span className="course-title">{materiaNombre}</span>
                 </div>
-              ))
+              </div>
             )}
           </div>
+        </nav>
+
+        <div className="sb-footer">
+          <button className="logout-btn" onClick={() => navigate('/login')}>
+            <svg viewBox="0 0 24 24" stroke="currentColor" fill="none" strokeWidth="1.5">
+              <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/>
+              <polyline points="16 17 21 12 16 7"/>
+              <line x1="21" y1="12" x2="9" y2="12"/>
+            </svg>
+            <span className="nav-label">Cerrar sesión</span>
+          </button>
+        </div>
+      </aside>
+
+      {/* Contenido  */}
+      <div className="mp-main">
+        <header className="mp-topbar">
+          <button onClick={() => navigate('/Alumno')} className="mp-back">
+            <svg viewBox="0 0 24 24" stroke="currentColor" fill="none" strokeWidth="1.5">
+              <polyline points="15 18 9 12 15 6"/>
+            </svg>
+            Volver
+          </button>
+          <h1 className="mp-titulo">{materiaNombre}</h1>
+        </header>
+
+        <div className="mp-tabs">
+          <button 
+            className={`mp-tab ${activeTab === 'recursos' ? 'active' : ''}`}
+            onClick={() => setActiveTab('recursos')}
+          >
+            📚 Recursos Digitales
+          </button>
+          <button 
+            className={`mp-tab ${activeTab === 'examenes' ? 'active' : ''}`}
+            onClick={() => setActiveTab('examenes')}
+          >
+            📋 Exámenes
+          </button>
+        </div>
+
+        <div className="mp-content">
+          {loading ? (
+            <p className="mp-loading">Cargando...</p>
+          ) : activeTab === 'recursos' ? (
+            <div className="mp-grid">
+              {materiales.length === 0 ? (
+                <div className="mp-empty">No hay recursos disponibles</div>
+              ) : (
+                materiales.map(material => (
+                  <div key={material.id} className="mp-card">
+                    <div className="mp-card-icon">{getIconoTipo(material.tipo)}</div>
+                    <div className="mp-card-body">
+                      <p className="mp-card-titulo">{material.titulo}</p>
+                      {material.descripcion && ( 
+                        <p className="mp-card-desc">{material.descripcion}</p>
+                      )}
+                      <div className="mp-card-meta">
+                        <span>👨‍🏫 {material.docente_nombre}</span>
+                        <span>📅 {formatTiempoRelativo(material.created_at)}</span>
+                        <span>📥 {material.descargas} descargas</span>
+                      </div>
+                      {material.etiquetas?.length > 0 && (
+                        <div className="mp-etiquetas">
+                          {material.etiquetas.map(et => (
+                            <span key={et} className="mp-etiqueta">{et}</span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    <button onClick={() => handleDescargar(material)} className="mp-btn">
+                      {material.tipo === 'enlace' ? 'Abrir enlace' : 'Descargar'}
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
         ) : (
           <div className="examenes-grid">
             {examenes.length === 0 ? (
@@ -185,5 +284,6 @@ export default function MateriaPage() {
         )}
       </div>
     </div>
+  </div>
   )
 }
