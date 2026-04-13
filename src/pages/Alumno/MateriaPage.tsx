@@ -5,11 +5,15 @@ import {
   obtenerMaterialesPorGrupo, 
   descargarMaterial,
   obtenerExamenesAlumno,
+  obtenerInfoAlumno,
+  obtenerMateriasAlumno,
+  type MateriaAlumno,
   type MaterialAlumno,
   type ExamenAlumno
 } from '../../lib/alumnoQueries'
 import { formatTiempoRelativo } from '../../lib/alumnoQueries'
 import './MateriaPage.css'
+import { logout } from '../../lib/auth'
 
 export default function MateriaPage() {
   const location = useLocation()
@@ -23,6 +27,8 @@ export default function MateriaPage() {
 
   const [collapsed, setCollapsed] = useState(false)
   const [materiasOpen, setMateriasOpen] = useState(false)
+  const [alumnoInfo, setAlumnoInfo] = useState<{ nombre: string; apellidoPaterno: string; matricula: string; } | null>(null)
+  const [materias, setMaterias] = useState<MateriaAlumno[]>([])
 
   useEffect(() => {
     if (materiaId) {
@@ -38,6 +44,19 @@ export default function MateriaPage() {
     ])
     setMateriales(materialesData)
     setExamenes(examenesData.filter(e => e.grupo_id === materiaId))
+   
+     // Obtener información del alumno
+     const info = await obtenerInfoAlumno()
+        if (info) {
+          setAlumnoInfo({
+            nombre: info.nombre,
+            apellidoPaterno: info.apellidoPaterno,
+            matricula: info.matricula
+          })
+        }
+    // Obtener materias
+    const materiasData = await obtenerMateriasAlumno()
+    setMaterias(materiasData)
     setLoading(false)
   }
 
@@ -77,13 +96,35 @@ export default function MateriaPage() {
       default: return { text: 'No disponible', class: 'badge-red' }
     }
   }
+   // Obtener iniciales del nombre para el avatar
+const getInitials = () => {
+    if (!alumnoInfo) return '??'
+    const nombreInicial = alumnoInfo.nombre ? alumnoInfo.nombre.charAt(0).toUpperCase() : ''
+    const apellidoInicial = alumnoInfo.apellidoPaterno ? alumnoInfo.apellidoPaterno.charAt(0).toUpperCase() : ''
+    return `${nombreInicial}${apellidoInicial}`
+  }
+   // Navega a la página de la materia
+  const irAMateria = (id: number, nombre: string) => {
+    navigate(`/Alumno/materia/${id}`, { state: { materiaNombre: nombre, materiaId: id } })
+  }
+   // Manejar cierre de sesión
+  const handleLogout = () => {
+      logout()
+      navigate('/login')
+    }
+    
+    // Obtener matrícula
+  const getMatricula = () => {
+    if (!alumnoInfo) return 'XXX-000000'
+    return alumnoInfo.matricula
+  }
 
   if (!materiaId) {
     return <div className="error">No se encontró la materia</div>
   }
 
   return (
-    <div className="mp-root">
+    <div className="dashboard">
      
       {/* Sidebar */}
       <aside className={`sidebar${collapsed ? ' collapsed' : ''}`}>
@@ -107,11 +148,14 @@ export default function MateriaPage() {
           </div>
         </div>
 
-        <div className="sb-user">
-          <div className="sb-avatar">AL</div>
+       <div className="sb-user">
+          <div className="sb-avatar">{getInitials()}</div>
           <div className="sb-info">
-            <div className="sb-uname">Alumno</div>
-            <div className="sb-uid">TIC-000000</div>
+            <div className="sb-uname">
+              {alumnoInfo ? `${alumnoInfo.nombre} ${alumnoInfo.apellidoPaterno}` : 'Alumno'}
+            </div>
+            {/* Aquí llamas a tu función */}
+            <div className="sb-uid">{getMatricula()}</div>
           </div>
         </div>
 
@@ -129,7 +173,7 @@ export default function MateriaPage() {
 
           <div>
             <div
-              className="nav-item active"
+              className={`nav-item ${activeTab ? 'active' : ''}`}
               onClick={() => {
                 if (collapsed) {
                   setCollapsed(false)
@@ -154,19 +198,25 @@ export default function MateriaPage() {
 
             {materiasOpen && (
               <div className="accordion-content">
-                <div className="nav-item course-item active">
-                  <div className="course-avatar" style={{ backgroundColor: 'rgba(229, 198, 135, 0.15)' }}>
-                    {materiaNombre?.charAt(0).toUpperCase()}
+                {materias.map((materia) => (
+                  <div 
+                    key={materia.id}
+                    className={`nav-item course-item ${materia.id === materiaId ? 'active' : ''}`} 
+                    onClick={() => irAMateria(materia.id, materia.materia)}
+                  >
+                    <div className="course-avatar" style={{ backgroundColor: 'rgba(229, 198, 135, 0.15)' }}>
+                      {materia.materia.charAt(0).toUpperCase()}
+                    </div>
+                    <span className="course-title">{materia.materia}</span>
                   </div>
-                  <span className="course-title">{materiaNombre}</span>
-                </div>
+                ))}
               </div>
             )}
           </div>
         </nav>
 
-        <div className="sb-footer">
-          <button className="logout-btn" onClick={() => navigate('/login')}>
+          <div className="sb-footer">
+          <button className="logout-btn" onClick={handleLogout}>
             <svg viewBox="0 0 24 24" stroke="currentColor" fill="none" strokeWidth="1.5">
               <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/>
               <polyline points="16 17 21 12 16 7"/>
