@@ -1,7 +1,7 @@
 import { supabase } from './supabaseClient'
 
 // ── Tipos ──────────────────────────────────────────────────────
-export type Rol = 'alumno' | 'docente'
+export type Rol = 'alumno' | 'docente' | 'admin'
 
 export interface UsuarioSesion {
   id:       number
@@ -9,6 +9,7 @@ export interface UsuarioSesion {
   rol:      Rol
   matricula?: string
   clave?:    string
+  clave_empleado?: string
   passwordChangeRequired?: boolean
 }
 
@@ -50,25 +51,22 @@ async function guardarSesion(usuario: UsuarioSesion) {
     passwordChangeRequired: usuario.passwordChangeRequired || false,
     ...(usuario.matricula ? { matricula: usuario.matricula } : {}),
     ...(usuario.clave     ? { clave:     usuario.clave     } : {}),
+    ...(usuario.clave_empleado ? { clave_empleado: usuario.clave_empleado } : {}),
     iat: Math.floor(Date.now() / 1000),
-    exp: Math.floor(Date.now() / 1000) + 60 * 60 * 8, // 8 horas
+    exp: Math.floor(Date.now() / 1000) + 60 * 60 * 8,
   }
   const token = await firmar(header, payload)
   localStorage.setItem('aula_token', token)
   return token
 }
 
-// ── FUNCIÓN PRINCIPAL: Detectar si contraseña = matrícula/clave ─
+// ── FUNCIÓN: Detectar si contraseña = identificador ────────────
 function esPasswordIgualAIdentificador(
   password: string, 
-  identificador: string, 
-  tipo: 'alumno' | 'docente'
+  identificador: string
 ): boolean {
-  // Limpiar y normalizar para comparación
   const passwordTrimmed = password.trim()
   const identificadorTrimmed = identificador.trim()
-  
-  // Comparación exacta (case-sensitive)
   return passwordTrimmed === identificadorTrimmed
 }
 
@@ -76,20 +74,24 @@ function esPasswordIgualAIdentificador(
 async function enviarCorreoCambioPassword(
   email: string,
   nombre: string,
-  tipo: 'alumno' | 'docente',
+  tipo: 'alumno' | 'docente' | 'admin',
   identificador: string,
-  motivo: 'matricula' | 'clave'
+  motivo: 'matricula' | 'clave' | 'clave_empleado'
 ): Promise<boolean> {
   try {
-    // Generar token único para cambio de password (válido 1 hora)
     const resetToken = await generarTokenResetPassword(email)
     const resetUrl = `${window.location.origin}/cambiar-password?token=${resetToken}&tipo=${tipo}&id=${identificador}`
     
-    const motivoTexto = motivo === 'matricula' 
-      ? 'tu matrícula' 
-      : 'tu clave de docente'
+    let motivoTexto = ''
+    if (motivo === 'matricula') motivoTexto = 'tu matrícula'
+    else if (motivo === 'clave') motivoTexto = 'tu clave de docente'
+    else motivoTexto = 'tu clave de empleado'
     
-    // Usar fetch para llamar a tu endpoint de correo
+    let tipoUsuario = ''
+    if (tipo === 'alumno') tipoUsuario = 'Alumno'
+    else if (tipo === 'docente') tipoUsuario = 'Docente'
+    else tipoUsuario = 'Administrador'
+    
     const response = await fetch('/api/enviar-correo', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -132,7 +134,7 @@ async function enviarCorreoCambioPassword(
                 <li>Mínimo 8 caracteres</li>
                 <li>Combinar letras mayúsculas y minúsculas</li>
                 <li>Incluir números y símbolos</li>
-                <li>No usar información personal (nombre, fecha, matrícula)</li>
+                <li>No usar información personal (nombre, fecha, matrícula, clave)</li>
               </ul>
             </div>
             
@@ -162,14 +164,12 @@ async function enviarCorreoCambioPassword(
 async function generarTokenResetPassword(email: string): Promise<string> {
   const payload = {
     email,
-    exp: Math.floor(Date.now() / 1000) + 3600, // 1 hora
+    exp: Math.floor(Date.now() / 1000) + 3600,
     iat: Math.floor(Date.now() / 1000)
   }
   const token = await firmar({ alg: 'HS256', typ: 'JWT' }, payload)
-  // Guardar token temporalmente
   localStorage.setItem(`reset_${email.replace(/[^a-zA-Z0-9]/g, '_')}`, token)
   
-  // Opcional: Guardar también en Supabase para mayor seguridad
   await supabase
     .from('password_reset_tokens')
     .insert([{ email, token, expires_at: new Date(Date.now() + 3600000) }])
@@ -177,16 +177,81 @@ async function generarTokenResetPassword(email: string): Promise<string> {
   
   return token
 }
-// LOGIN PRINCIPAL
+
+// ── LOGIN PRINCIPAL ────────────────────────────────────────────
 export async function login(
   identificador: string,
-  contrasena:    string
+  contrasena: string
 ): Promise<{ rol: Rol; requiereCambioPassword?: boolean } | { error: string }> {
 
   console.log('🔐 ===== INICIO DE LOGIN =====')
+  console.log('Identificador:', identificador)
 
+  // 1. VERIFICAR ADMINISTRADOR PRIMERO
+  console.log('👑 Buscando en tabla administradores...')
+  
+  const { data: admin, error: adminError } = await supabase
+    .from('administradores')
+    .select('id, nombre, apellidopaterno, email, contrasena, clave_empleado, password_changed')
+    .or(`email.eq.${identificador},clave_empleado.eq.${identificador}`)
+    .single()
+
+  if (admin && !adminError) {
+    console.log('👑 Modo: ADMINISTRADOR encontrado:', admin.nombre)
+    
+    if (admin.contrasena !== contrasena) {
+      console.log('❌ Contraseña incorrecta para administrador')
+      return { error: 'Credenciales incorrectas' }
+    }
+    
+    // Verificar si requiere cambio de contraseña
+    const passwordEsIgualClaveEmpleado = esPasswordIgualAIdentificador(
+      contrasena,
+      admin.clave_empleado
+    )
+    
+    const requiereCambio = passwordEsIgualClaveEmpleado || !admin.password_changed
+    
+    if (requiereCambio) {
+      console.log('⚠️ Administrador requiere cambio de contraseña')
+      
+      if (!admin.email) {
+        return { error: 'No hay correo registrado para notificaciones de seguridad' }
+      }
+      
+      await enviarCorreoCambioPassword(
+        admin.email,
+        `${admin.nombre} ${admin.apellidopaterno}`,
+        'admin',
+        identificador,
+        'clave_empleado'
+      )
+      
+      await guardarSesion({
+        id: admin.id,
+        nombre: `${admin.nombre} ${admin.apellidopaterno}`,
+        rol: 'admin',
+        clave_empleado: admin.clave_empleado,
+        passwordChangeRequired: true
+      })
+      
+      return { rol: 'admin', requiereCambioPassword: true }
+    }
+    
+    console.log('✅ Login exitoso - Administrador')
+    await guardarSesion({
+      id: admin.id,
+      nombre: `${admin.nombre} ${admin.apellidopaterno}`,
+      rol: 'admin',
+      clave_empleado: admin.clave_empleado,
+      passwordChangeRequired: false
+    })
+    return { rol: 'admin' }
+  }
+
+  // 2. VERIFICAR ALUMNO
   const esAlumno = identificador.startsWith('TIC-')
-
+  
   if (esAlumno) {
     console.log('👨‍🎓 Modo: ALUMNO')
     
@@ -196,58 +261,27 @@ export async function login(
       .eq('matricula', identificador)
       .single()
 
-    console.log('📊 Resultado Supabase Alumnos:', { 
-      encontrado: !!data,
-      error: error ? {
-        message: error.message,
-        code: error.code,
-        details: error.details,
-        hint: error.hint
-      } : null 
-    })
-
     if (error || !data) {
-      console.error('❌ Alumno no encontrado o error:', error)
+      console.error('❌ Alumno no encontrado:', error)
       return { error: 'Matrícula o contraseña incorrectos' }
     }
     
-    // Verificar contraseña
-    console.log('🔐 Verificando contraseña:', {
-      dbPassword: data.contrasena,
-      inputPassword: contrasena,
-      match: data.contrasena === contrasena
-    })
-    
-    const passwordMatch = data.contrasena === contrasena
-    if (!passwordMatch) {
+    if (data.contrasena !== contrasena) {
       console.log('❌ Contraseña incorrecta')
       return { error: 'Matrícula o contraseña incorrectos' }
     }
     
-    // ⭐ CRITERIO PRINCIPAL: ¿La contraseña es IGUAL a la matrícula?
-    const passwordEsIgualMatricula = esPasswordIgualAIdentificador(
-      contrasena, 
-      data.matricula, 
-      'alumno'
-    )
+    // Verificar si la contraseña es igual a la matrícula
+    const requiereCambio = esPasswordIgualAIdentificador(contrasena, data.matricula)
     
-    console.log('Debug - Alumno:', {
-      matricula: data.matricula,
-      contrasenaIngresada: contrasena,
-      sonIguales: passwordEsIgualMatricula
-    })
-    
-    // Si la contraseña es igual a la matrícula → enviar correo
-    if (passwordEsIgualMatricula) {
-      console.log('⚠️ Contraseña igual a matrícula - Requiere cambio')
+    if (requiereCambio) {
+      console.log('⚠️ Alumno requiere cambio de contraseña (contraseña = matrícula)')
       
       if (!data.email) {
-        console.error('❌ El alumno no tiene email registrado:', data.matricula)
         return { error: 'No hay correo registrado para notificaciones de seguridad' }
       }
       
-      // Enviar correo para cambio de contraseña
-      const emailEnviado = await enviarCorreoCambioPassword(
+      await enviarCorreoCambioPassword(
         data.email,
         `${data.nombre} ${data.apellidoPaterno}`,
         'alumno',
@@ -255,23 +289,17 @@ export async function login(
         'matricula'
       )
       
-      if (!emailEnviado) {
-        console.error('❌ Error al enviar correo a:', data.email)
-      }
-      
-      // Crear sesión con flag de cambio requerido (NO permite acceso)
       await guardarSesion({
         id: data.id,
         nombre: `${data.nombre} ${data.apellidoPaterno}`,
         rol: 'alumno',
         matricula: data.matricula,
-        passwordChangeRequired: true // ⚠️ Bloquea el acceso al dashboard
+        passwordChangeRequired: true
       })
       
       return { rol: 'alumno', requiereCambioPassword: true }
     }
     
-    // ✅ Login normal (contraseña válida y diferente a la matrícula)
     console.log('✅ Login exitoso - Alumno')
     await guardarSesion({
       id: data.id,
@@ -281,176 +309,129 @@ export async function login(
       passwordChangeRequired: false
     })
     return { rol: 'alumno' }
+  }
 
-  } else {
-    console.log('👨‍🏫 Modo: DOCENTE')
+  // 3. VERIFICAR DOCENTE
+  console.log('👨‍🏫 Modo: DOCENTE')
+  
+  const { data, error } = await supabase
+    .from('Docentes')
+    .select('id, nombre, apellidoPaterno, clave, contrasena, email')
+    .eq('clave', identificador)
+    .single()
+
+  if (error || !data) {
+    console.error('❌ Docente no encontrado:', error)
+    return { error: 'Clave o contraseña incorrectos' }
+  }
+  
+  if (data.contrasena !== contrasena) {
+    console.log('❌ Contraseña incorrecta')
+    return { error: 'Clave o contraseña incorrectos' }
+  }
+  
+  // Verificar si la contraseña es igual a la clave
+  const requiereCambio = esPasswordIgualAIdentificador(contrasena, data.clave)
+  
+  if (requiereCambio) {
+    console.log('⚠️ Docente requiere cambio de contraseña (contraseña = clave)')
     
-    // ── Busca en tabla Docentes ────────────────────────────────
-    console.log('🔍 Buscando en tabla Docentes con clave:', identificador)
-    console.log('📋 Tipo de identificador:', typeof identificador)
-    console.log('📋 Valor exacto:', `"${identificador}"`)
-    
-    const { data, error } = await supabase
-      .from('Docentes')
-      .select('id, nombre, apellidoPaterno, clave, contrasena, email')
-      .eq('clave', identificador)
-      .single()
-
-    // Log detallado del resultado
-    console.log('📊 Resultado Supabase Docentes:', { 
-      encontrado: !!data,
-      data: data ? {
-        id: data.id,
-        nombre: data.nombre,
-        clave: data.clave,
-        contrasena: data.contrasena,
-        tieneEmail: !!data.email
-      } : null,
-      error: error ? {
-        message: error.message,
-        code: error.code,
-        details: error.details,
-        hint: error.hint
-      } : null 
-    })
-
-    if (error) {
-      console.error('❌ Error en consulta Supabase:', {
-        message: error.message,
-        code: error.code,
-        details: error.details,
-        hint: error.hint
-      })
-      
-      // Error específico cuando no se encuentra ningún registro
-      if (error.code === 'PGRST116') {
-        console.log('❌ No se encontró docente con clave:', identificador)
-        return { error: 'Clave o contraseña incorrectos' }
-      }
-      
-      return { error: 'Error de conexión con la base de datos' }
+    if (!data.email) {
+      return { error: 'No hay correo registrado para notificaciones de seguridad' }
     }
     
-    if (!data) {
-      console.log('❌ No se encontró docente con clave:', identificador)
-      return { error: 'Clave o contraseña incorrectos' }
-    }
-    
-    // Verificar contraseña
-    console.log('🔐 Verificando contraseña docente:', {
-      dbPassword: data.contrasena,
-      dbPasswordType: typeof data.contrasena,
-      inputPassword: contrasena,
-      inputPasswordType: typeof contrasena,
-      match: data.contrasena === contrasena,
-      comparacionExacta: `"${data.contrasena}" === "${contrasena}"`
-    })
-    
-    const passwordMatch = data.contrasena === contrasena
-    if (!passwordMatch) {
-      console.log('❌ Contraseña incorrecta para docente')
-      return { error: 'Clave o contraseña incorrectos' }
-    }
-    
-    console.log('✅ Contraseña correcta')
-    
-    // ¿La contraseña es IGUAL a la clave del docente?
-    const passwordEsIgualClave = esPasswordIgualAIdentificador(
-      contrasena, 
-      data.clave, 
-      'docente'
+    await enviarCorreoCambioPassword(
+      data.email,
+      `${data.nombre} ${data.apellidoPaterno}`,
+      'docente',
+      identificador,
+      'clave'
     )
     
-    console.log('Debug - Docente:', {
-      clave: data.clave,
-      contrasenaIngresada: contrasena,
-      sonIguales: passwordEsIgualClave
-    })
-    
-    // Si la contraseña es igual a la clave → enviar correo
-    if (passwordEsIgualClave) {
-      console.log('⚠️ Contraseña igual a clave - Requiere cambio')
-      
-      if (!data.email) {
-        console.error('❌ El docente no tiene email registrado:', data.clave)
-        return { error: 'No hay correo registrado para notificaciones de seguridad' }
-      }
-      
-      // Enviar correo para cambio de contraseña
-      const emailEnviado = await enviarCorreoCambioPassword(
-        data.email,
-        `${data.nombre} ${data.apellidoPaterno}`,
-        'docente',
-        identificador,
-        'clave'
-      )
-      
-      if (!emailEnviado) {
-        console.error('❌ Error al enviar correo a:', data.email)
-      }
-      
-      // Crear sesión con flag de cambio requerido (NO permite acceso)
-      await guardarSesion({
-        id: data.id,
-        nombre: `${data.nombre} ${data.apellidoPaterno}`,
-        rol: 'docente',
-        clave: data.clave,
-        passwordChangeRequired: true // ⚠️ Bloquea el acceso al dashboard
-      })
-      
-      return { rol: 'docente', requiereCambioPassword: true }
-    }
-    
-    // ✅ Login normal (contraseña válida y diferente a la clave)
-    console.log('✅ Login exitoso - Docente')
     await guardarSesion({
       id: data.id,
       nombre: `${data.nombre} ${data.apellidoPaterno}`,
       rol: 'docente',
       clave: data.clave,
-      passwordChangeRequired: false
+      passwordChangeRequired: true
     })
-    console.log('🔐 ===== FIN LOGIN (EXITOSO) =====')
-    return { rol: 'docente' }
+    
+    return { rol: 'docente', requiereCambioPassword: true }
   }
+  
+  console.log('✅ Login exitoso - Docente')
+  await guardarSesion({
+    id: data.id,
+    nombre: `${data.nombre} ${data.apellidoPaterno}`,
+    rol: 'docente',
+    clave: data.clave,
+    passwordChangeRequired: false
+  })
+  return { rol: 'docente' }
 }
 
-// ── Cambiar contraseña (después del correo) ────────────────────
+// ── Cambiar contraseña ─────────────────────────────────────────
 export async function cambiarPassword(
   identificador: string,
   nuevaPassword: string,
-  tipo: 'alumno' | 'docente'
+  tipo: 'alumno' | 'docente' | 'admin'
 ): Promise<{ success: boolean; error?: string }> {
-  const tabla = tipo === 'alumno' ? 'Alumnos' : 'Docentes'
-  const campoId = tipo === 'alumno' ? 'matricula' : 'clave'
   
-  // Validar que la nueva contraseña NO sea igual a la matrícula/clave
+  let tabla = ''
+  let campoId = ''
+  let campoIdentificador = ''
+  
+  switch (tipo) {
+    case 'admin':
+      tabla = 'administradores'
+      campoId = 'clave_empleado'
+      campoIdentificador = 'clave_empleado'
+      break
+    case 'alumno':
+      tabla = 'Alumnos'
+      campoId = 'matricula'
+      campoIdentificador = 'matricula'
+      break
+    case 'docente':
+      tabla = 'Docentes'
+      campoId = 'clave'
+      campoIdentificador = 'clave'
+      break
+  }
+  
+  // Validar que la nueva contraseña NO sea igual al identificador
   const { data: usuario } = await supabase
     .from(tabla)
     .select(campoId)
-    .eq(campoId, identificador)
+    .eq(campoIdentificador, identificador)
     .single()
   
-  // SOLUCIÓN: Acceder de forma segura a la propiedad usando type assertion
   if (usuario) {
-    // Usamos type assertion para decirle a TypeScript qué tipo de objeto es
-    const valorIdentificador = tipo === 'alumno' 
-      ? (usuario as { matricula: string }).matricula 
-      : (usuario as { clave: string }).clave
-    
+    const valorIdentificador = usuario[campoId as keyof typeof usuario] as string
     if (valorIdentificador === nuevaPassword) {
       return { 
         success: false, 
-        error: 'La nueva contraseña no puede ser igual a tu matrícula o clave' 
+        error: `La nueva contraseña no puede ser igual a tu ${tipo === 'admin' ? 'clave de empleado' : tipo === 'alumno' ? 'matrícula' : 'clave'}` 
       }
     }
   }
   
-  // Actualizar contraseña (RECOMENDACIÓN: usar hash)
+  // Validar longitud mínima
+  if (nuevaPassword.length < 6) {
+    return { success: false, error: 'La contraseña debe tener al menos 6 caracteres' }
+  }
+  
+  // Actualizar contraseña
+  // Para admin, también actualizar password_changed
+  const updateData: any = { contrasena: nuevaPassword }
+  if (tipo === 'admin') {
+    updateData.password_changed = true
+  }
+  
   const { error } = await supabase
     .from(tabla)
-    .update({ contrasena: nuevaPassword })
-    .eq(campoId, identificador)
+    .update(updateData)
+    .eq(campoIdentificador, identificador)
   
   if (error) return { success: false, error: error.message }
   
@@ -480,6 +461,7 @@ export function getSesion(): UsuarioSesion | null {
       rol: payload.rol,
       matricula: payload.matricula,
       clave: payload.clave,
+      clave_empleado: payload.clave_empleado,
       passwordChangeRequired: payload.passwordChangeRequired || false
     }
   } catch {

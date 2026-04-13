@@ -60,7 +60,7 @@ export default function GrupoPage() {
     { id: 'recursos', label: '📚 Recursos', component: GestionRecursos },
     { id: 'preguntas', label: '📝 Banco de Preguntas', component: BancoPreguntas },
     { id: 'examenes', label: '📋 Exámenes', component: GestionExamenes },
-    { id: 'alumnos', label: '👥 Alumnos', component: null }
+
   ]
 
   const ActiveComponent = tabs.find(t => t.id === activeTab)?.component

@@ -3,7 +3,6 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { login } from '../lib/auth'
 
-
 export default function Login() {
   const navigate = useNavigate()
 
@@ -12,13 +11,12 @@ export default function Login() {
   const [password, setPassword]   = useState('')
   const [loading, setLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
-   // ✅ Estado de carga
 
   // ── Estado de errores (uno por campo) ────────────────────────
   const [errors, setErrors] = useState({
     matricula: '',
     password:  '',
-    general: '' // ✅ Error general
+    general: ''
   })
 
   // ── Validación de matrícula ───────────────────────────────────
@@ -26,19 +24,24 @@ export default function Login() {
     let msg = ''
 
     if (valor.length === 0) {
-      msg = 'La matrícula es requerida'
+      msg = 'El identificador es requerido'
     } else if (/^TIC-/.test(valor)) {
       // 👨‍🎓 Es alumno — valida formato TIC-XXXXXX
       if (!/^TIC-\d{6}$/.test(valor)) {
         msg = 'Formato de alumno inválido. Ej: TIC-310000'
       }
+    } else if (/^ADMN/i.test(valor)) {
+      // 👑 Es administrador — valida formato ADMNXXXXXX (ADMN + 6 números)
+      if (!/^ADMN\d{6}$/i.test(valor)) {
+        msg = 'Formato de administrador inválido. Ej: ADMN121212'
+      }
     } else if (/^\d/.test(valor)) {
       // 👨‍🏫 Es maestro — valida que sean solo números
       if (!/^\d+$/.test(valor)) {
-        msg = 'La clave de maestro solo debe contener números'
+        msg = 'La clave de docente solo debe contener números'
       }
-    } else if(!/^TIC-/.test(valor)) {
-      msg = 'Solo se registraron alumnos con matricula TIC-310000'
+    } else {
+      msg = 'Formato no válido. Use: TIC-310000 (alumno), ADMN121212 (admin) o solo números (docente)'
     }
 
     setErrors(prev => ({ ...prev, matricula: msg }))
@@ -55,7 +58,7 @@ export default function Login() {
     setErrors(prev => ({ ...prev, password: msg }))
   }
 
-  // ── Submit MODIFICADO con logs ────────────────────────────────────
+  // ── Submit ────────────────────────────────────────────────────
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
@@ -65,8 +68,8 @@ export default function Login() {
     // Validaciones
     validarMatricula(matricula)
     validarPassword(password)
-    const hayErrores = !matricula || !password || errors.matricula || errors.password
-    if (hayErrores) {
+    
+    if (errors.matricula || errors.password || !matricula || !password) {
       console.log('❌ Validación fallida:', { matricula, password, errors })
       return
     }
@@ -79,7 +82,6 @@ export default function Login() {
     })
 
     try {
-
       const result = await login(matricula, password)
       
       console.log('📦 Resultado del login:', result)
@@ -99,16 +101,30 @@ export default function Login() {
       // Login exitoso
       console.log('✅ Login exitoso! Rol:', result.rol)
       
-      if ('requiereCambioPassword' in result && result.requiereCambioPassword) {
+      // Verificar si requiere cambio de contraseña
+      if (result.requiereCambioPassword) {
         console.log('⚠️ Usuario requiere cambio de contraseña')
-        alert('⚠️ Has iniciado sesión con tu matrícula/clave como contraseña.\n\nSe ha enviado un correo para cambiar tu contraseña.')
-        // Opcional: cerrar sesión o mostrar modal
+        
+        // Mostrar mensaje según el rol
+        let mensaje = ''
+        if (result.rol === 'alumno') {
+          mensaje = '⚠️ Has iniciado sesión con tu matrícula como contraseña.\n\nSe ha enviado un correo a tu cuenta institucional para cambiar tu contraseña.'
+        } else if (result.rol === 'docente') {
+          mensaje = '⚠️ Has iniciado sesión con tu clave como contraseña.\n\nSe ha enviado un correo a tu cuenta institucional para cambiar tu contraseña.'
+        } else if (result.rol === 'admin') {
+          mensaje = '⚠️ Has iniciado sesión con tu clave de empleado como contraseña.\n\nSe ha enviado un correo a tu cuenta institucional para cambiar tu contraseña.'
+        }
+        
+        alert(mensaje)
         setLoading(false)
         return
       }
       
       // Redirigir según el rol
-      if (result.rol === 'docente') {
+      if (result.rol === 'admin') {
+        console.log('👑 Redirigiendo a dashboard administrador')
+        navigate('/Admin', { replace: true })
+      } else if (result.rol === 'docente') {
         console.log('👨‍🏫 Redirigiendo a dashboard docente')
         navigate('/Docente', { replace: true })
       } else if (result.rol === 'alumno') {
@@ -127,7 +143,7 @@ export default function Login() {
     }
   }
 
-return (
+  return (
     <div className="login-root">
       {/* PANEL IZQUIERDO */}
       <div className="form-panel">
@@ -157,7 +173,7 @@ return (
               <input
                 id="matricula"
                 type="text"
-                placeholder="Ej. TIC-000000"
+                placeholder="Ej. TIC-310000, ADMN121212 o 123456"
                 autoComplete="username"
                 value={matricula}
                 onChange={e => {
@@ -202,7 +218,7 @@ return (
                     <circle cx="12" cy="12" r="3"/>
                   </svg>
                 ) : (
-                   <svg viewBox="0 0 24 24">
+                  <svg viewBox="0 0 24 24">
                     <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
                     <circle cx="12" cy="12" r="3"/>
                     <line x1="3" y1="3" x2="21" y2="21"/>
@@ -250,7 +266,8 @@ return (
         <div className="visual-middle">
           <div className="visual-heading">Espacio Digital <em>de Aprendizaje</em></div>
           <p className="visual-sub">
-            Plataforma centralizada en material didactico, actividades y seguimiento académico para la comunidad UTN. </p>
+            Plataforma centralizada en material didactico, actividades y seguimiento académico para la comunidad UTN.
+          </p>
         </div>
 
         <div className="visual-bottom">

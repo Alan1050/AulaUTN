@@ -99,10 +99,7 @@ export default function DashboardAlumno() {
     return alumnoInfo.matricula
   }
 
-  // Obtener cuatrimestre (puedes calcularlo o obtenerlo de algún lugar)
   const getCuatrimestre = () => {
-    // Si tienes información del cuatrimestre en algún lado, puedes obtenerla
-    // Por ahora, mostramos algo genérico o de la primera materia
     if (materias.length > 0 && materias[0].cuatrimestre) {
       return materias[0].cuatrimestre
     }

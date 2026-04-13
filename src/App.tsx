@@ -3,6 +3,7 @@ import './App.css';
 import Login from './pages/Login';
 import DashboardDocente from './pages/DashboardDocente';
 import DashboardAlumnos from './pages/DashboardAlumnos';
+import DashboardAdmin from './pages/DashboardAdmin'; // Importar el DashboardAdmin
 import Sitemap from './pages/SiteMap';
 import CambiarPassword from './pages/CambiarPassword';
 import Unauthorized from './pages/Unauthorized';
@@ -22,6 +23,16 @@ function App() {
         <Route path="/sitemap" element={<Sitemap />} />
         <Route path="/unauthorized" element={<Unauthorized />} />
         <Route path="/" element={<Navigate to="/login" replace />} />
+
+        {/* ========== RUTAS DE ADMINISTRADOR ========== */}
+        <Route 
+          path="/Admin" 
+          element={
+            <ProtectedRoute allowedRoles={['admin']}>
+              <DashboardAdmin />
+            </ProtectedRoute>
+          } 
+        />
 
         {/* ========== RUTAS DE DOCENTE ========== */}
         <Route 
