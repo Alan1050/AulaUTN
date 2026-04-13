@@ -82,15 +82,22 @@ export default function GrupoPage() {
                 <path d="M12 3L22 9L12 15L2 9L12 3Z"/><path d="M6 11.5V17c0 0 2.5 2.5 6 2.5s6-2.5 6-2.5V11.5"/><line x1="22" y1="9" x2="22" y2="14"/>
               </svg>
             </div>
-            <span className="sb-logo-name">Aula<span>UTN</span></span>
+            <span className="sb-logo-name" translate="no">Aula<span>UTN</span></span>
           </div>
         </div>
 
         <div className="sb-user">
-          <div className="sb-avatar">{getInitials()}</div>
+          <div className="sb-avatar" translate="no">{getInitials()}</div>
           <div className="sb-info">
-            <div className="sb-uname">
-              {docenteInfo ? `Mtro. ${docenteInfo.nombre} ${docenteInfo.apellidoPaterno}` : 'Docente'}
+           <div className="sb-uname" translate="no" style={{ display: 'flex', flexDirection: 'column', lineHeight: '1.2' }}>
+              {docenteInfo ? (
+                <>
+                  <span>Mtro. {docenteInfo.nombre}</span>
+                  <span>{docenteInfo.apellidoPaterno}</span>
+                </>
+              ) : (
+                'Mtro. Docente'
+              )}
             </div>
             <div className="sb-uid">Docente</div>
           </div>

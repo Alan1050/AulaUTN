@@ -144,15 +144,22 @@ const getInitials = () => {
                 <line x1="22" y1="9" x2="22" y2="14"/>
               </svg>
             </div>
-            <span className="sb-logo-name">Aula<span>UTN</span></span>
+            <span className="sb-logo-name" translate="no">Aula<span>UTN</span></span>
           </div>
         </div>
 
        <div className="sb-user">
-          <div className="sb-avatar">{getInitials()}</div>
+          <div className="sb-avatar" translate="no">{getInitials()}</div>
           <div className="sb-info">
-            <div className="sb-uname">
-              {alumnoInfo ? `${alumnoInfo.nombre} ${alumnoInfo.apellidoPaterno}` : 'Alumno'}
+            <div className="sb-uname" translate="no" style={{ display: 'flex', flexDirection: 'column', lineHeight: '1.2' }}>
+              {alumnoInfo ? (
+                <>
+                  <span>{alumnoInfo.nombre}</span>
+                  <span>{alumnoInfo.apellidoPaterno}</span>
+                </>
+              ) : (
+                'Alumno'
+              )}
             </div>
             {/* Aquí llamas a tu función */}
             <div className="sb-uid">{getMatricula()}</div>
