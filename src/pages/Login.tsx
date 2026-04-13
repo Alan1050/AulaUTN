@@ -238,10 +238,9 @@ return (
         <div className="visual-top">
           <div className="visual-logo">
             <div className="visual-logo-icon">
-              <svg viewBox="0 0 24 24">
-                <path d="M12 2L22 7L12 12L2 7L12 2Z"/>
-                <path d="M2 17L12 22L22 17"/>
-                <path d="M2 12L12 17L22 12"/>
+              <svg viewBox="0 0 24 24" stroke="currentColor" fill="none" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M22 10v6M2 10l10-5 10 5-10 5z"/>
+                <path d="M6 12v5c3 3 9 3 12 0v-5"/>
               </svg>
             </div>
             <div className="visual-logo-name">Aula<span>UTN</span></div>
