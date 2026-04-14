@@ -94,7 +94,7 @@ async function enviarCorreoCambioPassword(
     
     // Generar token y URL de reset
     const resetToken = await generarTokenResetPassword(email)
-    const resetUrl = `${window.location.origin}/cambiar-password?token=${resetToken}&tipo=${tipo}&id=${identificador}`
+    const resetUrl = `https://aulautn2.netlify.app/cambiar-password?token=${resetToken}&tipo=${tipo}&id=${identificador}`
     
     // Determinar tipo de usuario para mostrar en el correo
     let tipoUsuario = ''
