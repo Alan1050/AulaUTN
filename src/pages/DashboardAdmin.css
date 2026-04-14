@@ -632,3 +632,172 @@
     grid-template-columns: 1fr;
   }
 }
+
+.respaldos-section {
+  padding: 20px;
+}
+
+.backup-info-card {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 12px;
+  padding: 20px;
+  margin: 20px 0;
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+  color: white;
+}
+
+.info-icon {
+  font-size: 32px;
+}
+
+.info-content h3 {
+  margin: 0 0 10px 0;
+}
+
+.info-content p {
+  margin: 5px 0;
+  opacity: 0.95;
+}
+
+.backups-list {
+  background: white;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.backups-list h3 {
+  margin: 0 0 20px 0;
+  color: #333;
+}
+
+.backups-table {
+  overflow-x: auto;
+}
+
+.backups-table table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.backups-table th {
+  background: #f5f5f5;
+  padding: 12px;
+  text-align: left;
+  font-weight: 600;
+  color: #555;
+  border-bottom: 2px solid #e0e0e0;
+}
+
+.backups-table td {
+  padding: 12px;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.backup-tipo {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.backup-tipo.manual {
+  background: #4caf50;
+  color: white;
+}
+
+.backup-tipo.automatico {
+  background: #2196f3;
+  color: white;
+}
+
+.backup-estado {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.backup-estado.completado {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+
+.backup-estado.en_proceso {
+  background: #fff3e0;
+  color: #e65100;
+}
+
+.backup-estado.fallido {
+  background: #ffebee;
+  color: #c62828;
+}
+
+.backup-failed {
+  background: #fff5f5;
+}
+
+.btn-restore {
+  background: #ff9800;
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  transition: all 0.3s;
+}
+
+.btn-restore:hover:not(:disabled) {
+  background: #f57c00;
+  transform: translateY(-1px);
+}
+
+.btn-restore:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+}
+
+.no-backups {
+  text-align: center;
+  padding: 40px;
+  color: #999;
+}
+
+/* Modal de restauración */
+.restore-warning {
+  background: #fff3e0;
+  border-left: 4px solid #ff9800;
+  padding: 15px;
+  margin: 20px 0;
+  display: flex;
+  gap: 15px;
+  align-items: flex-start;
+}
+
+.warning-icon {
+  font-size: 24px;
+}
+
+.warning-text p {
+  margin: 5px 0;
+  color: #e65100;
+}
+
+.btn-danger {
+  background: #dc3545;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.btn-danger:hover:not(:disabled) {
+  background: #c82333;
+}

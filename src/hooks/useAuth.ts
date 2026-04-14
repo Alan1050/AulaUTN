@@ -1,6 +1,8 @@
+// hooks/useAuth.ts
+
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getSesion, requiereCambioPassword, logout, type UsuarioSesion } from '../lib/auth';
+import { getSesion, requiereCambioPassword, logout, type UsuarioSesion, type Rol } from '../lib/auth';
 
 export function useAuth() {
   const [usuario, setUsuario] = useState<UsuarioSesion | null>(null);
@@ -18,11 +20,9 @@ export function useAuth() {
 
     cargarSesion();
 
-    // Intervalo para verificar expiración de sesión (cada minuto)
     const interval = setInterval(() => {
       const sesion = getSesion();
       if (!sesion && usuario) {
-        // Sesión expirada
         logout();
         setUsuario(null);
         navigate('/login');
@@ -32,7 +32,8 @@ export function useAuth() {
     return () => clearInterval(interval);
   }, [navigate, usuario]);
 
-  const verificarAcceso = (rolesPermitidos: ('alumno' | 'docente')[]): boolean => {
+  // 👈 Modificar para aceptar todos los roles
+  const verificarAcceso = (rolesPermitidos: Rol[]): boolean => {
     if (!usuario) return false;
     if (requiresPasswordChange) return false;
     return rolesPermitidos.includes(usuario.rol);
@@ -44,6 +45,7 @@ export function useAuth() {
     requiresPasswordChange,
     verificarAcceso,
     isAuthenticated: !!usuario && !requiresPasswordChange,
+    isAdmin: usuario?.rol === 'admin' && !requiresPasswordChange,  // 👈 Agregar
     isDocente: usuario?.rol === 'docente' && !requiresPasswordChange,
     isAlumno: usuario?.rol === 'alumno' && !requiresPasswordChange,
   };

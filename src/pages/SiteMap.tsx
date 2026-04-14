@@ -9,6 +9,7 @@ function Sitemap() {
         <li><Link className='Enlaces' to="/">Login</Link></li>
         <li><Link className='Enlaces' to="/Docente">Dashboard Docente</Link></li>
         <li><Link className='Enlaces' to="/Alumno">Dashboard Alumno</Link></li>
+        <li><Link className='Enlaces' to="/Admin">Dashboard Administrador</Link></li>
       </ul>
     </div>
   );

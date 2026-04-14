@@ -33,7 +33,7 @@ export default function Login() {
     } else if (/^ADMN/i.test(valor)) {
       // 👑 Es administrador — valida formato ADMNXXXXXX (ADMN + 6 números)
       if (!/^ADMN\d{6}$/i.test(valor)) {
-        msg = 'Formato de administrador inválido. Ej: ADMN121212'
+        msg = 'Formato de administrador inválido. Ej: ADMN000000'
       }
     } else if (/^\d/.test(valor)) {
       // 👨‍🏫 Es maestro — valida que sean solo números
@@ -41,7 +41,7 @@ export default function Login() {
         msg = 'La clave de docente solo debe contener números'
       }
     } else {
-      msg = 'Formato no válido. Use: TIC-310000 (alumno), ADMN121212 (admin) o solo números (docente)'
+      msg = 'Formato no válido. Use: TIC-310000 (alumno), ADMN000000 (admin) o solo números (docente)'
     }
 
     setErrors(prev => ({ ...prev, matricula: msg }))
@@ -173,7 +173,7 @@ export default function Login() {
               <input
                 id="matricula"
                 type="text"
-                placeholder="Ej. TIC-310000, ADMN121212 o 123456"
+                placeholder="Ej. TIC-310000, ADMN000000 o 123456"
                 autoComplete="username"
                 value={matricula}
                 onChange={e => {

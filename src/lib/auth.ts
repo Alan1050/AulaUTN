@@ -8,6 +8,7 @@ export interface UsuarioSesion {
   nombre:   string
   rol:      Rol
   matricula?: string
+  email?:   string
   clave?:    string
   clave_empleado?: string
   passwordChangeRequired?: boolean
@@ -48,6 +49,7 @@ async function guardarSesion(usuario: UsuarioSesion) {
     sub:  usuario.id,
     rol:  usuario.rol,
     nombre: usuario.nombre,
+    email: usuario.email,
     passwordChangeRequired: usuario.passwordChangeRequired || false,
     ...(usuario.matricula ? { matricula: usuario.matricula } : {}),
     ...(usuario.clave     ? { clave:     usuario.clave     } : {}),
@@ -231,6 +233,7 @@ export async function login(
         id: admin.id,
         nombre: `${admin.nombre} ${admin.apellidopaterno}`,
         rol: 'admin',
+        email: admin.email,
         clave_empleado: admin.clave_empleado,
         passwordChangeRequired: true
       })
@@ -243,6 +246,7 @@ export async function login(
       id: admin.id,
       nombre: `${admin.nombre} ${admin.apellidopaterno}`,
       rol: 'admin',
+      email: admin.email,
       clave_empleado: admin.clave_empleado,
       passwordChangeRequired: false
     })
@@ -293,6 +297,7 @@ export async function login(
         id: data.id,
         nombre: `${data.nombre} ${data.apellidoPaterno}`,
         rol: 'alumno',
+        email: data.email,
         matricula: data.matricula,
         passwordChangeRequired: true
       })
@@ -305,6 +310,7 @@ export async function login(
       id: data.id,
       nombre: `${data.nombre} ${data.apellidoPaterno}`,
       rol: 'alumno',
+      email: data.email,
       matricula: data.matricula,
       passwordChangeRequired: false
     })
@@ -352,6 +358,7 @@ export async function login(
       id: data.id,
       nombre: `${data.nombre} ${data.apellidoPaterno}`,
       rol: 'docente',
+      email: data.email,
       clave: data.clave,
       passwordChangeRequired: true
     })
@@ -364,6 +371,7 @@ export async function login(
     id: data.id,
     nombre: `${data.nombre} ${data.apellidoPaterno}`,
     rol: 'docente',
+    email: data.email,
     clave: data.clave,
     passwordChangeRequired: false
   })
@@ -460,6 +468,7 @@ export function getSesion(): UsuarioSesion | null {
       nombre: payload.nombre,
       rol: payload.rol,
       matricula: payload.matricula,
+      email: payload.email,
       clave: payload.clave,
       clave_empleado: payload.clave_empleado,
       passwordChangeRequired: payload.passwordChangeRequired || false

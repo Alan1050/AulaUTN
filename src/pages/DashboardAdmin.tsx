@@ -35,6 +35,15 @@ interface ReporteFiltros {
   tipo_reporte: 'materiales' | 'examenes' | 'usuarios' | 'actividad'
 }
 
+interface Backup {
+  id: number
+  fecha: string
+  tipo: string
+  registros: number
+  estado: string
+  admin_nombre: string
+}
+
 export default function DashboardAdmin() {
   const [collapsed, setCollapsed] = useState(false)
   const [activeTab, setActiveTab] = useState('inicio')
@@ -70,48 +79,76 @@ export default function DashboardAdmin() {
   })
   const [generandoReporte, setGenerandoReporte] = useState(false)
 
-const [adminInfo, setAdminInfo] = useState<{ nombre: string; apellidoPaterno: string; apellidoMaterno?: string } | null>(null)
+  // Estados para respaldos
+  const [backups, setBackups] = useState<Backup[]>([])
+  const [creandoBackup, setCreandoBackup] = useState(false)
+  const [showRestoreModal, setShowRestoreModal] = useState(false)
+  const [backupSeleccionado, setBackupSeleccionado] = useState<number | null>(null)
+  const [restaurando, setRestaurando] = useState(false)
+
+  const [adminInfo, setAdminInfo] = useState<{ id: number; nombre: string; apellidoPaterno: string; apellidoMaterno?: string } | null>(null)
 
   const navigate = useNavigate()
 
   useEffect(() => {
     cargarDatos()
+    cargarBackups()
   }, [])
 
-  useEffect(() => {
-  const cargarInfoAdmin = () => {
+// En DashboardAdmin.tsx, modifica este useEffect:
+
+useEffect(() => {
+  const cargarInfoAdmin = async () => {
     const sesion = getSesion()
     if (sesion && sesion.rol === 'admin') {
-      // El nombre ya viene en la sesión
-      const nombreCompleto = sesion.nombre.split(' ')
-      setAdminInfo({
-        nombre: nombreCompleto[0] || '',
-        apellidoPaterno: nombreCompleto[1] || '',
-        apellidoMaterno: nombreCompleto[2] || ''
-      })
+      // CORREGIDO: usar los nombres correctos de columnas
+      const { data: adminData, error } = await supabase
+        .from('administradores')
+        .select('id, nombre, apellidopaterno, apellidomaterno')  // 👈 minúsculas
+        .eq('clave_empleado', sesion.clave_empleado)
+        .single()
+      
+      if (error) {
+        console.error('Error al cargar admin:', error)
+        // Fallback: usar datos de la sesión
+        const nombrePartes = sesion.nombre.split(' ')
+        setAdminInfo({
+          id: sesion.id,
+          nombre: nombrePartes[0] || '',
+          apellidoPaterno: nombrePartes[1] || '',
+          apellidoMaterno: nombrePartes[2] || ''
+        })
+      } else if (adminData) {
+        setAdminInfo({
+          id: adminData.id,
+          nombre: adminData.nombre,
+          apellidoPaterno: adminData.apellidopaterno,  // 👈 minúscula
+          apellidoMaterno: adminData.apellidomaterno   // 👈 minúscula
+        })
+      }
     }
   }
   
   cargarInfoAdmin()
 }, [])
 
-// Función para obtener iniciales
-const getInitials = () => {
-  if (!adminInfo) return 'AD'
-  
-  const primeraLetra = adminInfo.nombre ? adminInfo.nombre.charAt(0).toUpperCase() : ''
-  const segundaLetra = adminInfo.apellidoPaterno ? adminInfo.apellidoPaterno.charAt(0).toUpperCase() : ''
-  
-  return `${primeraLetra}${segundaLetra}`
-}
+  // Función para obtener iniciales
+  const getInitials = () => {
+    if (!adminInfo) return 'AD'
+    
+    const primeraLetra = adminInfo.nombre ? adminInfo.nombre.charAt(0).toUpperCase() : ''
+    const segundaLetra = adminInfo.apellidoPaterno ? adminInfo.apellidoPaterno.charAt(0).toUpperCase() : ''
+    
+    return `${primeraLetra}${segundaLetra}`
+  }
 
-// Función para obtener nombre completo
-const getNombreCompleto = () => {
-  if (!adminInfo) return 'Administrador'
-  
-  const nombreCompleto = `${adminInfo.nombre} ${adminInfo.apellidoPaterno}`
-  return nombreCompleto.trim()
-}
+  // Función para obtener nombre completo
+  const getNombreCompleto = () => {
+    if (!adminInfo) return 'Administrador'
+    
+    const nombreCompleto = `${adminInfo.nombre} ${adminInfo.apellidoPaterno}`
+    return nombreCompleto.trim()
+  }
 
   const cargarDatos = async () => {
     setLoading(true)
@@ -125,6 +162,101 @@ const getNombreCompleto = () => {
       console.error('Error al cargar datos:', error)
     } finally {
       setLoading(false)
+    }
+  }
+
+const cargarBackups = async () => {
+  try {
+    const sesion = getSesion()
+    if (!sesion || sesion.rol !== 'admin') {
+      console.error('No hay sesión de admin')
+      return
+    }
+    
+    console.log('Cargando backups con admin_id:', sesion.id)
+    
+    const { data, error } = await supabase
+      .rpc('obtener_backups', {
+        p_admin_id: sesion.id,  // Usar ID de la sesión
+        p_limite: 50
+      })
+    
+    if (error) {
+      console.error('Error en RPC obtener_backups:', error)
+      return
+    }
+    
+    console.log('Backups cargados:', data)
+    setBackups(data || [])
+  } catch (error) {
+    console.error('Error al cargar backups:', error)
+  }
+}
+
+  const crearBackup = async () => {
+    if (!adminInfo) {
+      alert('No se pudo identificar al administrador')
+      return
+    }
+
+    setCreandoBackup(true)
+    try {
+      const { data, error } = await supabase
+        .rpc('realizar_backup_completo', {
+          p_admin_id: adminInfo.id,
+          p_tipo_backup: 'manual'
+        })
+      
+      if (error) throw error
+      
+      if (data && data.success) {
+        alert(`Backup creado exitosamente! ID: ${data.backup_id}`)
+        await cargarBackups()
+      } else {
+      }
+    } catch (error: any) {
+      console.error('Error al crear backup:', error)
+      alert(`Error al crear backup: ${error.message}`)
+    } finally {
+      setCreandoBackup(false)
+    }
+  }
+
+  const restaurarBackup = async () => {
+    if (!adminInfo || !backupSeleccionado) {
+      alert('Seleccione un backup para restaurar')
+      return
+    }
+
+    if (!confirm('⚠️ ADVERTENCIA: Esta acción sobrescribirá TODOS los datos actuales con la versión del backup seleccionado. ¿Está ABSOLUTAMENTE SEGURO de continuar?')) {
+      return
+    }
+
+    setRestaurando(true)
+    try {
+      const { data, error } = await supabase
+        .rpc('restaurar_backup', {
+          p_admin_id: adminInfo.id,
+          p_backup_id: backupSeleccionado,
+          p_tabla_objetivo: null
+        })
+      
+      if (error) throw error
+      
+      if (data && data.success) {
+        alert('Restauración completada exitosamente. Los datos han sido restaurados.')
+        setShowRestoreModal(false)
+        setBackupSeleccionado(null)
+        // Recargar datos del dashboard
+        await cargarDatos()
+      } else {
+        alert(`Error: ${data?.message || 'No se pudo restaurar el backup'}`)
+      }
+    } catch (error: any) {
+      console.error('Error al restaurar backup:', error)
+      alert(`Error al restaurar backup: ${error.message}`)
+    } finally {
+      setRestaurando(false)
     }
   }
 
@@ -422,89 +554,99 @@ const getNombreCompleto = () => {
   return (
     <div className="dashboard admin-dashboard">
       {/* SIDEBAR */}
-<aside className={`sidebar${collapsed ? ' collapsed' : ''}`}>
-  <div className="sb-top">
-    <button className="toggle-btn" onClick={() => setCollapsed(v => !v)}>
-      <svg viewBox="0 0 24 24" stroke="currentColor" fill="none" strokeWidth="1.5">
-        <line x1="3" y1="12" x2="21" y2="12"/>
-        <line x1="3" y1="6" x2="21" y2="6"/>
-        <line x1="3" y1="18" x2="21" y2="18"/>
-      </svg>
-    </button>
-    <div className="sb-logo">
-      <div className="sb-logo-icon">
-        <svg viewBox="0 0 24 24" stroke="currentColor" fill="none" strokeWidth="1.5">
-          <path d="M12 3L22 9L12 15L2 9L12 3Z"/>
-          <path d="M6 11.5V17c0 0 2.5 2.5 6 2.5s6-2.5 6-2.5V11.5"/>
-          <line x1="22" y1="9" x2="22" y2="14"/>
-        </svg>
-      </div>
-      <span className="sb-logo-name">Admin<span>UTN</span></span>
-    </div>
-  </div>
+      <aside className={`sidebar${collapsed ? ' collapsed' : ''}`}>
+        <div className="sb-top">
+          <button className="toggle-btn" onClick={() => setCollapsed(v => !v)}>
+            <svg viewBox="0 0 24 24" stroke="currentColor" fill="none" strokeWidth="1.5">
+              <line x1="3" y1="12" x2="21" y2="12"/>
+              <line x1="3" y1="6" x2="21" y2="6"/>
+              <line x1="3" y1="18" x2="21" y2="18"/>
+            </svg>
+          </button>
+          <div className="sb-logo">
+            <div className="sb-logo-icon">
+              <svg viewBox="0 0 24 24" stroke="currentColor" fill="none" strokeWidth="1.5">
+                <path d="M12 3L22 9L12 15L2 9L12 3Z"/>
+                <path d="M6 11.5V17c0 0 2.5 2.5 6 2.5s6-2.5 6-2.5V11.5"/>
+                <line x1="22" y1="9" x2="22" y2="14"/>
+              </svg>
+            </div>
+            <span className="sb-logo-name">Admin<span>UTN</span></span>
+          </div>
+        </div>
 
-  <div className="sb-user">
-    <div className="sb-avatar">{getInitials()}</div>
-    <div className="sb-info">
-      <div className="sb-uname">{getNombreCompleto()}</div>
-      <div className="sb-uid">Administrador</div>
-    </div>
-  </div>
+        <div className="sb-user">
+          <div className="sb-avatar">{getInitials()}</div>
+          <div className="sb-info">
+            <div className="sb-uname">{getNombreCompleto()}</div>
+            <div className="sb-uid">Administrador</div>
+          </div>
+        </div>
 
-  <nav className="sb-nav">
-    <p className="sb-section">Principal</p>
-    
-    <div className={`nav-item ${activeTab === 'inicio' ? 'active' : ''}`} onClick={() => setActiveTab('inicio')}>
-      <svg viewBox="0 0 24 24" stroke="currentColor" fill="none" strokeWidth="1.5">
-        <rect x="3" y="3" width="7" height="7" rx="1"/>
-        <rect x="14" y="3" width="7" height="7" rx="1"/>
-        <rect x="3" y="14" width="7" height="7" rx="1"/>
-        <rect x="14" y="14" width="7" height="7" rx="1"/>
-      </svg>
-      <span className="nav-label">Dashboard</span>
-    </div>
+        <nav className="sb-nav">
+          <p className="sb-section">Principal</p>
+          
+          <div className={`nav-item ${activeTab === 'inicio' ? 'active' : ''}`} onClick={() => setActiveTab('inicio')}>
+            <svg viewBox="0 0 24 24" stroke="currentColor" fill="none" strokeWidth="1.5">
+              <rect x="3" y="3" width="7" height="7" rx="1"/>
+              <rect x="14" y="3" width="7" height="7" rx="1"/>
+              <rect x="3" y="14" width="7" height="7" rx="1"/>
+              <rect x="14" y="14" width="7" height="7" rx="1"/>
+            </svg>
+            <span className="nav-label">Dashboard</span>
+          </div>
 
-    <div className={`nav-item ${activeTab === 'alumnos' ? 'active' : ''}`} onClick={() => setActiveTab('alumnos')}>
-      <svg viewBox="0 0 24 24" stroke="currentColor" fill="none" strokeWidth="1.5">
-        <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/>
-        <circle cx="9" cy="7" r="4"/>
-      </svg>
-      <span className="nav-label">Alumnos</span>
-    </div>
+          <div className={`nav-item ${activeTab === 'alumnos' ? 'active' : ''}`} onClick={() => setActiveTab('alumnos')}>
+            <svg viewBox="0 0 24 24" stroke="currentColor" fill="none" strokeWidth="1.5">
+              <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/>
+              <circle cx="9" cy="7" r="4"/>
+            </svg>
+            <span className="nav-label">Alumnos</span>
+          </div>
 
-    <div className={`nav-item ${activeTab === 'docentes' ? 'active' : ''}`} onClick={() => setActiveTab('docentes')}>
-      <svg viewBox="0 0 24 24" stroke="currentColor" fill="none" strokeWidth="1.5">
-        <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/>
-        <circle cx="9" cy="7" r="4"/>
-        <path d="M23 21v-2a4 4 0 00-3-3.87"/>
-        <path d="M16 3.13a4 4 0 010 7.75"/>
-      </svg>
-      <span className="nav-label">Docentes</span>
-    </div>
+          <div className={`nav-item ${activeTab === 'docentes' ? 'active' : ''}`} onClick={() => setActiveTab('docentes')}>
+            <svg viewBox="0 0 24 24" stroke="currentColor" fill="none" strokeWidth="1.5">
+              <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/>
+              <circle cx="9" cy="7" r="4"/>
+              <path d="M23 21v-2a4 4 0 00-3-3.87"/>
+              <path d="M16 3.13a4 4 0 010 7.75"/>
+            </svg>
+            <span className="nav-label">Docentes</span>
+          </div>
 
-    <p className="sb-section">Reportes</p>
-    
-    <div className={`nav-item ${activeTab === 'reportes' ? 'active' : ''}`} onClick={() => setActiveTab('reportes')}>
-      <svg viewBox="0 0 24 24" stroke="currentColor" fill="none" strokeWidth="1.5">
-        <path d="M21 12v3a4 4 0 01-4 4H7a4 4 0 01-4-4v-3"/>
-        <path d="M12 2v10m0 0l-3-3m3 3l3-3"/>
-        <path d="M3 2h18"/>
-      </svg>
-      <span className="nav-label">Reportes</span>
-    </div>
-  </nav>
+          <p className="sb-section">Seguridad</p>
+          
+          <div className={`nav-item ${activeTab === 'respaldos' ? 'active' : ''}`} onClick={() => setActiveTab('respaldos')}>
+            <svg viewBox="0 0 24 24" stroke="currentColor" fill="none" strokeWidth="1.5">
+              <path d="M19 11H5M5 11L9 15M5 11L9 7"/>
+              <path d="M5 5h14v14H5z"/>
+            </svg>
+            <span className="nav-label">Respaldo de Datos</span>
+          </div>
 
-  <div className="sb-footer">
-    <button className="logout-btn" onClick={handleLogout}>
-      <svg viewBox="0 0 24 24" stroke="currentColor" fill="none" strokeWidth="1.5">
-        <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/>
-        <polyline points="16 17 21 12 16 7"/>
-        <line x1="21" y1="12" x2="9" y2="12"/>
-      </svg>
-      <span className="nav-label">Cerrar sesión</span>
-    </button>
-  </div>
-</aside>
+          <p className="sb-section">Reportes</p>
+          
+          <div className={`nav-item ${activeTab === 'reportes' ? 'active' : ''}`} onClick={() => setActiveTab('reportes')}>
+            <svg viewBox="0 0 24 24" stroke="currentColor" fill="none" strokeWidth="1.5">
+              <path d="M21 12v3a4 4 0 01-4 4H7a4 4 0 01-4-4v-3"/>
+              <path d="M12 2v10m0 0l-3-3m3 3l3-3"/>
+              <path d="M3 2h18"/>
+            </svg>
+            <span className="nav-label">Reportes</span>
+          </div>
+        </nav>
+
+        <div className="sb-footer">
+          <button className="logout-btn" onClick={handleLogout}>
+            <svg viewBox="0 0 24 24" stroke="currentColor" fill="none" strokeWidth="1.5">
+              <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/>
+              <polyline points="16 17 21 12 16 7"/>
+              <line x1="21" y1="12" x2="9" y2="12"/>
+            </svg>
+            <span className="nav-label">Cerrar sesión</span>
+          </button>
+        </div>
+      </aside>
 
       {/* CONTENIDO PRINCIPAL */}
       <main className="main">
@@ -673,6 +815,65 @@ const getNombreCompleto = () => {
                     ))}
                   </tbody>
                 </table>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'respaldos' && (
+            <div className="respaldos-section">
+              <div className="section-header">
+                <h2>Respaldo de Datos</h2>
+                <button 
+                  className="btn-primary" 
+                  onClick={crearBackup}
+                  disabled={creandoBackup}
+                >
+                  {creandoBackup ? 'Creando Backup...' : '💾 Crear Backup Manual'}
+                </button>
+              </div>
+
+              <div className="backups-list">
+                <h3>Historial de Respaldos</h3>
+                {backups.length === 0 ? (
+                  <div className="no-backups">
+                    <p>No hay respaldos registrados aún.</p>
+                    <p>Presione el botón "Crear Backup Manual" para generar su primer respaldo.</p>
+                  </div>
+                ) : (
+                  <div className="backups-table">
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>Fecha</th>
+                          <th>Tipo</th>
+                          <th>Registros</th>
+                          <th>Estado</th>
+                          <th>Administrador</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {backups.map(backup => (
+                          <tr key={backup.id} className={backup.estado === 'fallido' ? 'backup-failed' : ''}>
+                            <td>{new Date(backup.fecha).toLocaleString()}</td>
+                            <td>
+                              <span className={`backup-tipo ${backup.tipo}`}>
+                                {backup.tipo === 'manual' ? 'Manual' : 'Automático'}
+                              </span>
+                            </td>
+                            <td>{backup.registros?.toLocaleString() || 0}</td>
+                            <td>
+                              <span className={`backup-estado ${backup.estado}`}>
+                                {backup.estado === 'completado' ? '✓ Completado' : 
+                                 backup.estado === 'en_proceso' ? '⏳ En proceso' : '✗ Fallido'}
+                              </span>
+                            </td>
+                            <td>{backup.admin_nombre || 'Sistema'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -862,6 +1063,61 @@ const getNombreCompleto = () => {
               </button>
               <button className="btn-primary" onClick={generarReporte} disabled={generandoReporte}>
                 {generandoReporte ? 'Generando...' : 'Generar Reporte (Excel)'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal para restaurar backup */}
+      {showRestoreModal && (
+        <div className="modal-overlay" onClick={() => setShowRestoreModal(false)}>
+          <div className="modal-content" onClick={e => e.stopPropagation()}>
+            <h3>⚠️ Restaurar Backup</h3>
+            
+            <div className="restore-warning">
+              <div className="warning-icon">⚠️</div>
+              <div className="warning-text">
+                <p><strong>Esta acción es irreversible y sobrescribirá todos los datos actuales.</strong></p>
+                <p>Al restaurar el backup #{backupSeleccionado}, se perderán todos los cambios realizados después de la fecha del backup.</p>
+                <p>Se recomienda crear un backup manual antes de continuar.</p>
+              </div>
+            </div>
+            
+            <div className="form-group">
+              <label>Confirmación</label>
+              <input
+                type="text"
+                placeholder='Escriba "CONFIRMAR" para continuar'
+                onChange={(e) => {
+                  if (e.target.value !== 'CONFIRMAR') {
+                    // Deshabilitar el botón si no escribe CONFIRMAR
+                  }
+                }}
+                id="confirmacion-restore"
+              />
+            </div>
+            
+            <div className="modal-actions">
+              <button className="btn-secondary" onClick={() => {
+                setShowRestoreModal(false)
+                setBackupSeleccionado(null)
+              }}>
+                Cancelar
+              </button>
+              <button 
+                className="btn-danger" 
+                onClick={() => {
+                  const confirmInput = document.getElementById('confirmacion-restore') as HTMLInputElement
+                  if (confirmInput && confirmInput.value === 'CONFIRMAR') {
+                    restaurarBackup()
+                  } else {
+                    alert('Debe escribir "CONFIRMAR" para proceder con la restauración')
+                  }
+                }}
+                disabled={restaurando}
+              >
+                {restaurando ? 'Restaurando...' : 'Confirmar Restauración'}
               </button>
             </div>
           </div>
