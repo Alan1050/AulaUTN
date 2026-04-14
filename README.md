@@ -60,7 +60,7 @@
 | [Supabase](https://supabase.com/) | Almacenamiento |
 | [EmailJS](https://emailjs.com/) | Envio de Correos |
 
-> Puedes ver el proyecto en el siguiente enlace: [https://aulautn.netlify.app](https://aulautn.netlify.app)
+> Puedes ver el proyecto en el siguiente enlace: [https://aulautn2.netlify.app](https://aulautn2.netlify.app)
 
 ---
 
