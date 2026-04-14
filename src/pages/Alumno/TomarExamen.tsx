@@ -18,7 +18,7 @@ export default function TomarExamen() {
   const navigate = useNavigate()
   const { examenId, examenTitulo, materiaNombre } = location.state || {}
   
-  const [examen, setExamen] = useState<any>(null)
+
   const [preguntas, setPreguntas] = useState<any[]>([])
   const [respuestas, setRespuestas] = useState<RespuestaTemp[]>([])
   const [intentoId, setIntentoId] = useState<number | null>(null)
@@ -35,7 +35,6 @@ export default function TomarExamen() {
   const cargarExamen = async () => {
     const data = await obtenerExamenParaTomar(examenId)
     if (data) {
-      setExamen(data.examen)
       setPreguntas(data.preguntas)
       setTiempoRestante(data.examen.tiempo_limite * 60)
       
@@ -130,7 +129,7 @@ export default function TomarExamen() {
     await finalizarExamen(intentoId, calificacion)
     
     // Redirigir a resultados
-    navigate(`/Alumno/resultados/${intentoId}`, {
+    navigate(`/Alumno`, {
       state: { 
         calificacion,
         examenTitulo,

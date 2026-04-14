@@ -285,7 +285,7 @@ export default function DashboardAlumno() {
               <p className="section-title">Mis materias</p>
               <div className="materias-grid">
                 {materias.length > 0 ? (
-                  materias.map((materia, index) => (
+                  materias.map((materia) => (
                     <div 
                       key={materia.id}
                       className="materia-card" 

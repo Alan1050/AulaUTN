@@ -6,7 +6,7 @@ export function AuthLayout() {
   const [loading, setLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [needsPasswordChange, setNeedsPasswordChange] = useState(false);
-  const [userRole, setUserRole] = useState<'alumno' | 'docente' | null>(null);
+  const [userRole, setUserRole] = useState<'alumno' | 'docente' |  'admin' | null>(null);
   const location = useLocation();
 
   useEffect(() => {
