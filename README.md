@@ -3,7 +3,7 @@
 > Plataforma educativa digital para la Universidad Tecnológica de Nayarit — diseñada para la gestión, organización y distribución eficiente de contenido académico.
 
 ![React](https://img.shields.io/badge/React-19-61DAFB?style=flat-square&logo=react)
-<!-- ![Estado](https://img.shields.io/badge/Estado-En%20desarrollo-yellow?style=flat-square) -->
+![Estado](https://img.shields.io/badge/Estado-En%20desarrollo-yellow?style=flat-square)
 
 ---
 
@@ -56,7 +56,11 @@
 | Tecnología | Uso |
 |---|---|
 | [React 19](https://react.dev/) | Interfaz de usuario |
-| [Vercel](https://vercel.com/) | Despliegue y hosting |
+| [Netlify](https://vercel.com/) | Despliegue y hosting |
+| [Supabase](https://supabase.com/) | Almacenamiento |
+| [EmailJS](https://emailjs.com/) | Envio de Correos |
+
+> Puedes ver el proyecto en el siguiente enlace: [https://aulautn.netlify.app](https://aulautn.netlify.app)
 
 ---
 
