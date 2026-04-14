@@ -6,10 +6,21 @@ import './CambiarPassword.css'
 // ── Tipos ──────────────────────────────────────────────────────
 interface PasswordResetData {
   token: string
-  tipo: 'alumno' | 'docente'
+  tipo: 'alumno' | 'docente' | 'admin'
   identificador: string
   email: string
   valido: boolean
+}
+
+// Tipo para los datos del usuario según su rol
+type UsuarioData = {
+  id: number
+  nombre: string
+  apellidoPaterno: string
+  email: string
+  matricula?: string
+  clave?: string
+  clave_empleado?: string
 }
 
 export default function CambiarPassword() {
@@ -50,7 +61,10 @@ export default function CambiarPassword() {
     const tipo = searchParams.get('tipo')
     const id = searchParams.get('id')
     
-    console.log('Verificando token:', { token, tipo, id })
+    console.log('=== VERIFICANDO TOKEN ===')
+    console.log('Token:', token)
+    console.log('Tipo:', tipo)
+    console.log('ID (identificador):', id)
     
     // Validar que existan los parámetros
     if (!token || !tipo || !id) {
@@ -60,73 +74,97 @@ export default function CambiarPassword() {
     }
     
     // Validar tipo válido
-    if (tipo !== 'alumno' && tipo !== 'docente') {
+    if (tipo !== 'alumno' && tipo !== 'docente' && tipo !== 'admin') {
       setError('Tipo de usuario no válido')
       setVerificando(false)
       return
     }
     
     try {
-      // Verificar token en Supabase
-      const tabla = tipo === 'alumno' ? 'Alumnos' : 'Docentes'
-      const campoId = tipo === 'alumno' ? 'matricula' : 'clave'
+      // Determinar tabla y campo identificador según el tipo
+      let tabla = ''
+      let campoId = ''
+      let selectFields = ''
+      
+      switch (tipo) {
+        case 'alumno':
+          tabla = 'Alumnos'
+          campoId = 'matricula'
+          selectFields = 'id, nombre, apellidoPaterno, email, matricula'
+          break
+        case 'docente':
+          tabla = 'Docentes'
+          campoId = 'clave'
+          selectFields = 'id, nombre, apellidoPaterno, email, clave'
+          break
+        case 'admin':
+          tabla = 'administradores'
+          campoId = 'clave_empleado'
+          selectFields = 'id, nombre, apellidopaterno, email, clave_empleado'
+          break
+      }
+      
+      console.log(`Buscando en tabla: ${tabla}`)
+      console.log(`Campo: ${campoId}, Valor: ${id}`)
       
       // Buscar al usuario
       const { data: usuario, error: userError } = await supabase
         .from(tabla)
-        .select('id, nombre, apellidoPaterno, email, matricula, clave')
+        .select(selectFields)
         .eq(campoId, id)
-        .single()
+        .single<UsuarioData>()
+      
+      console.log('Resultado búsqueda usuario:', { usuario, userError })
       
       if (userError || !usuario) {
-        console.error('Usuario no encontrado:', userError)
-        setError('Usuario no encontrado')
+        console.error('❌ Usuario no encontrado:', userError)
+        setError(`Usuario no encontrado con ${campoId}: ${id}`)
         setVerificando(false)
         return
       }
       
-      // Verificar token en la tabla de resets (opcional pero recomendado)
+      // Obtener el email (manejar diferentes nombres de campo)
+      const emailUsuario = usuario.email
+      console.log('✅ Usuario encontrado:', emailUsuario)
+      
+      // Verificar token en la tabla de resets
       const { data: tokenData, error: tokenError } = await supabase
         .from('password_reset_tokens')
         .select('*')
         .eq('token', token)
-        .eq('email', usuario.email)
+        .eq('email', emailUsuario)
         .eq('used', false)
         .single()
       
-      // Si no hay tabla de tokens, solo verificamos que el token exista en localStorage
+      console.log('Verificación token en BD:', { tokenData, tokenError })
+      
       if (tokenError) {
-        // Fallback: verificar en localStorage
-        const storedToken = localStorage.getItem(`reset_${usuario.email.replace(/[^a-zA-Z0-9]/g, '_')}`)
-        
-        if (storedToken !== token) {
-          setError('Token inválido o expirado')
-          setVerificando(false)
-          return
-        }
-        
-        // Verificar expiración (1 hora)
-        const tokenPayload = JSON.parse(atob(token.split('.')[1]))
-        if (tokenPayload.exp < Math.floor(Date.now() / 1000)) {
-          setError('El enlace ha expirado. Por favor, solicita un nuevo cambio de contraseña.')
-          setVerificando(false)
-          return
-        }
-      } else {
-        // Verificar expiración del token en BD
-        if (new Date(tokenData.expires_at) < new Date()) {
-          setError('El enlace ha expirado. Por favor, solicita un nuevo cambio de contraseña.')
-          setVerificando(false)
-          return
-        }
+        console.log('❌ Token no encontrado en BD o ya usado')
+        setError('Token inválido o expirado')
+        setVerificando(false)
+        return
+      }
+      
+      // Verificar expiración del token en BD
+      const fechaExpiracion = new Date(tokenData.expires_at)
+      const ahora = new Date()
+      
+      console.log('Fecha expiración:', fechaExpiracion)
+      console.log('Fecha actual:', ahora)
+      console.log('¿Expirado?', fechaExpiracion < ahora)
+      
+      if (fechaExpiracion < ahora) {
+        setError('El enlace ha expirado. Por favor, solicita un nuevo cambio de contraseña.')
+        setVerificando(false)
+        return
       }
       
       // Token válido
       setResetData({
         token,
-        tipo: tipo as 'alumno' | 'docente',
+        tipo: tipo as 'alumno' | 'docente' | 'admin',
         identificador: id,
-        email: usuario.email,
+        email: emailUsuario,
         valido: true
       })
       
@@ -231,25 +269,51 @@ export default function CambiarPassword() {
     }))
   }
 
-  // ── Verificar si la nueva contraseña es igual a matrícula/clave ─
+  // ── Verificar si la nueva contraseña es igual a identificador ─
   const verificarPasswordNoIgualIdentificador = async (password: string): Promise<boolean> => {
     if (!resetData) return false
     
-    const tabla = resetData.tipo === 'alumno' ? 'Alumnos' : 'Docentes'
-    const campoId = resetData.tipo === 'alumno' ? 'matricula' : 'clave'
+    let tabla = ''
+    let campoId = ''
+    let selectField = ''
+    let nombreIdentificador = ''
+    
+    switch (resetData.tipo) {
+      case 'alumno':
+        tabla = 'Alumnos'
+        campoId = 'matricula'
+        selectField = 'matricula'
+        nombreIdentificador = 'matrícula'
+        break
+      case 'docente':
+        tabla = 'Docentes'
+        campoId = 'clave'
+        selectField = 'clave'
+        nombreIdentificador = 'clave'
+        break
+      case 'admin':
+        tabla = 'administradores'
+        campoId = 'clave_empleado'
+        selectField = 'clave_empleado'
+        nombreIdentificador = 'clave de empleado'
+        break
+    }
     
     const { data: usuario } = await supabase
       .from(tabla)
-      .select(campoId)
+      .select(selectField)
       .eq(campoId, resetData.identificador)
       .single()
     
-    if (usuario && usuario[campoId] === password) {
-      setErrors(prev => ({
-        ...prev,
-        password: `La nueva contraseña no puede ser igual a tu ${resetData.tipo === 'alumno' ? 'matrícula' : 'clave'}`
-      }))
-      return false
+    if (usuario) {
+      const valorIdentificador = usuario[selectField as keyof typeof usuario] as string
+      if (valorIdentificador === password) {
+        setErrors(prev => ({
+          ...prev,
+          password: `La nueva contraseña no puede ser igual a tu ${nombreIdentificador}`
+        }))
+        return false
+      }
     }
     
     return true
@@ -272,25 +336,46 @@ export default function CambiarPassword() {
       return
     }
     
-    // Verificar que no sea igual a matrícula/clave
+    // Verificar que no sea igual a identificador
     const isValid = await verificarPasswordNoIgualIdentificador(newPassword)
     if (!isValid) return
     
     setLoading(true)
     
     try {
-      const tabla = resetData!.tipo === 'alumno' ? 'Alumnos' : 'Docentes'
-      const campoId = resetData!.tipo === 'alumno' ? 'matricula' : 'clave'
+      let tabla = ''
+      let campoId = ''
+      
+      switch (resetData!.tipo) {
+        case 'alumno':
+          tabla = 'Alumnos'
+          campoId = 'matricula'
+          break
+        case 'docente':
+          tabla = 'Docentes'
+          campoId = 'clave'
+          break
+        case 'admin':
+          tabla = 'administradores'
+          campoId = 'clave_empleado'
+          break
+      }
+      
+      // Para admin, también actualizar password_changed
+      const updateData: any = { contrasena: newPassword }
+      if (resetData!.tipo === 'admin') {
+        updateData.password_changed = true
+      }
       
       // Actualizar contraseña
       const { error: updateError } = await supabase
         .from(tabla)
-        .update({ contrasena: newPassword })
+        .update(updateData)
         .eq(campoId, resetData!.identificador)
       
       if (updateError) throw updateError
       
-      // Marcar token como usado (si existe la tabla)
+      // Marcar token como usado
       const { error: tokenError } = await supabase
         .from('password_reset_tokens')
         .update({ used: true, used_at: new Date() })
@@ -323,31 +408,86 @@ export default function CambiarPassword() {
     setLoading(true)
     
     try {
+      const emailjs = await import('@emailjs/browser');
+      
+      const EMAILJS_SERVICE_ID = import.meta.env.VITE_EMAILJS_SERVICE_ID;
+      const EMAILJS_TEMPLATE_ID = import.meta.env.VITE_EMAILJS_TEMPLATE_ID;
+      const EMAILJS_PUBLIC_KEY = import.meta.env.VITE_EMAILJS_PUBLIC_KEY;
+      
+      let tabla = ''
+      let campoId = ''
+      let selectFields = ''
+      
+      switch (resetData.tipo) {
+        case 'alumno':
+          tabla = 'Alumnos'
+          campoId = 'matricula'
+          selectFields = 'nombre, apellidoPaterno'
+          break
+        case 'docente':
+          tabla = 'Docentes'
+          campoId = 'clave'
+          selectFields = 'nombre, apellidoPaterno'
+          break
+        case 'admin':
+          tabla = 'administradores'
+          campoId = 'clave_empleado'
+          selectFields = 'nombre, apellidopaterno'
+          break
+      }
+      
+      const { data: usuario, error: userError } = await supabase
+        .from(tabla)
+        .select(selectFields)
+        .eq(campoId, resetData.identificador)
+        .single()
+      
+      if (userError || !usuario) {
+        throw new Error('No se encontraron datos del usuario')
+      }
+      
       // Generar nuevo token
       const newToken = await generarNuevoToken(resetData.email)
       const resetUrl = `${window.location.origin}/cambiar-password?token=${newToken}&tipo=${resetData.tipo}&id=${resetData.identificador}`
       
-      // Enviar nuevo correo
-      const response = await fetch('/api/enviar-correo', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          to: resetData.email,
-          subject: 'Nuevo enlace para cambiar tu contraseña',
-          html: `
-            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-              <h2>Nuevo enlace para cambiar tu contraseña</h2>
-              <p>Haz clic en el siguiente enlace para cambiar tu contraseña:</p>
-              <a href="${resetUrl}" style="background-color: #4F46E5; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; margin: 20px 0;">
-                Cambiar mi contraseña
-              </a>
-              <p>Este enlace expirará en 1 hora.</p>
-            </div>
-          `
-        })
-      })
+      // Obtener nombre completo (manejar diferentes nombres de campo)
+      const apellido = resetData.tipo === 'admin' 
+        ? (usuario as any).apellidopaterno 
+        : (usuario as any).apellidoPaterno
       
-      if (response.ok) {
+      const nombreCompleto = `${(usuario as any).nombre} ${apellido}`
+      let tipoUsuario = ''
+      
+      switch (resetData.tipo) {
+        case 'alumno': tipoUsuario = 'Alumno'; break
+        case 'docente': tipoUsuario = 'Docente'; break
+        case 'admin': tipoUsuario = 'Administrador'; break
+      }
+      
+      emailjs.default.init(EMAILJS_PUBLIC_KEY);
+      
+      const templateParams = {
+        to_email: resetData.email,
+        subject: '🔐 Nuevo enlace para cambiar tu contraseña',
+        nombre: nombreCompleto,
+        tipo_usuario: tipoUsuario,
+        enlace: resetUrl,
+        identificador: resetData.identificador,
+        fecha: new Date().toLocaleString('es-MX', {
+          dateStyle: 'full',
+          timeStyle: 'short'
+        })
+      };
+      
+      console.log('📧 Enviando correo de reenvío a:', resetData.email);
+      
+      const result = await emailjs.default.send(
+        EMAILJS_SERVICE_ID,
+        EMAILJS_TEMPLATE_ID,
+        templateParams
+      );
+      
+      if (result.status === 200) {
         alert('📧 Se ha enviado un nuevo enlace a tu correo electrónico')
       } else {
         throw new Error('Error al enviar correo')
@@ -361,21 +501,32 @@ export default function CambiarPassword() {
     }
   }
 
-  // Función auxiliar para generar token
+  // Función para generar nuevo token
   const generarNuevoToken = async (email: string): Promise<string> => {
-    // Implementación simplificada - en producción usa la misma lógica que en auth.ts
     const payload = {
       email,
       exp: Math.floor(Date.now() / 1000) + 3600,
       iat: Math.floor(Date.now() / 1000)
     }
-    const token = btoa(JSON.stringify(payload))
+    
+    const b64 = (obj: object) => btoa(JSON.stringify(obj))
+      .replace(/\+/g, '-')
+      .replace(/\//g, '_')
+      .replace(/=+$/, '')
+    
+    const token = `${b64({ alg: 'HS256', typ: 'JWT' })}.${b64(payload)}`
+    
+    const emailKey = email.replace(/[^a-zA-Z0-9]/g, '_')
+    localStorage.setItem(`reset_${emailKey}`, token)
+    
+    await supabase
+      .from('password_reset_tokens')
+      .insert([{ email, token, expires_at: new Date(Date.now() + 3600000) }])
+    
     return token
   }
-
-  // ── Renderizado condicional ──────────────────────────────────
   
-  // Estado: Verificando token
+  // ── Renderizado condicional ──────────────────────────────────
   if (verificando) {
     return (
       <div className="cambiar-password-container">
@@ -387,7 +538,6 @@ export default function CambiarPassword() {
     )
   }
   
-  // Estado: Error
   if (error) {
     return (
       <div className="cambiar-password-container">
@@ -410,7 +560,6 @@ export default function CambiarPassword() {
     )
   }
   
-  // Estado: Formulario de cambio
   return (
     <div className="cambiar-password-container">
       <div className="cambiar-password-card">
@@ -421,7 +570,6 @@ export default function CambiarPassword() {
         </div>
         
         <form onSubmit={handleSubmit} className="password-form">
-          {/* Nueva contraseña */}
           <div className="form-group">
             <label htmlFor="new-password">
               Nueva Contraseña
@@ -446,7 +594,6 @@ export default function CambiarPassword() {
               </button>
             </div>
             
-            {/* Indicador de fortaleza */}
             {newPassword && (
               <div className="password-strength">
                 <div className="strength-bar">
@@ -464,7 +611,6 @@ export default function CambiarPassword() {
               </div>
             )}
             
-            {/* Requisitos de contraseña */}
             <div className="password-requirements">
               <p>Requisitos:</p>
               <ul>
@@ -488,7 +634,6 @@ export default function CambiarPassword() {
             )}
           </div>
           
-          {/* Confirmar contraseña */}
           <div className="form-group">
             <label htmlFor="confirm-password">
               Confirmar Contraseña
@@ -510,20 +655,7 @@ export default function CambiarPassword() {
             )}
           </div>
           
-          {/* Información de seguridad */}
-          <div className="security-info">
-            <div className="info-icon">ℹ️</div>
-            <div className="info-text">
-              <strong>Recomendaciones de seguridad:</strong>
-              <ul>
-                <li>No uses la misma contraseña que en otros servicios</li>
-                <li>Evita información personal (nombre, fecha de nacimiento)</li>
-                <li>No compartas tu contraseña con nadie</li>
-              </ul>
-            </div>
-          </div>
           
-          {/* Botones de acción */}
           <div className="form-actions">
             <button
               type="button"

@@ -81,101 +81,90 @@ async function enviarCorreoCambioPassword(
   motivo: 'matricula' | 'clave' | 'clave_empleado'
 ): Promise<boolean> {
   try {
+    // Importar EmailJS dinámicamente
+    const emailjs = await import('@emailjs/browser');
+    
+    // Configuración de EmailJS
+    const EMAILJS_SERVICE_ID = import.meta.env.VITE_EMAILJS_SERVICE_ID;
+    const EMAILJS_TEMPLATE_ID = import.meta.env.VITE_EMAILJS_TEMPLATE_ID;
+    const EMAILJS_PUBLIC_KEY = import.meta.env.VITE_EMAILJS_PUBLIC_KEY;
+    
+    // Inicializar EmailJS
+    emailjs.default.init(EMAILJS_PUBLIC_KEY);
+    
+    // Generar token y URL de reset
     const resetToken = await generarTokenResetPassword(email)
     const resetUrl = `${window.location.origin}/cambiar-password?token=${resetToken}&tipo=${tipo}&id=${identificador}`
     
-    let motivoTexto = ''
-    if (motivo === 'matricula') motivoTexto = 'tu matrícula'
-    else if (motivo === 'clave') motivoTexto = 'tu clave de docente'
-    else motivoTexto = 'tu clave de empleado'
-    
+    // Determinar tipo de usuario para mostrar en el correo
     let tipoUsuario = ''
     if (tipo === 'alumno') tipoUsuario = 'Alumno'
     else if (tipo === 'docente') tipoUsuario = 'Docente'
     else tipoUsuario = 'Administrador'
     
-    const response = await fetch('/api/enviar-correo', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        to: email,
-        subject: '⚠️ Cambio de contraseña requerido - Seguridad',
-        html: `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e0e0e0; border-radius: 8px; padding: 20px;">
-            <div style="text-align: center; margin-bottom: 20px;">
-              <h2 style="color: #dc2626;">⚠️ Cambio de Contraseña Requerido</h2>
-            </div>
-            
-            <p>Hola <strong>${nombre}</strong>,</p>
-            
-            <p>Hemos detectado que estás utilizando <strong style="color: #dc2626;">${motivoTexto}</strong> como tu contraseña.</p>
-            
-            <div style="background-color: #fef2f2; border-left: 4px solid #dc2626; padding: 15px; margin: 20px 0;">
-              <p style="margin: 0; color: #991b1b;">
-                <strong>⚠️ Razón de seguridad:</strong> Por política de seguridad del sistema, 
-                no está permitido usar tu ${motivoTexto} como contraseña.
-              </p>
-            </div>
-            
-            <p>Para continuar usando el sistema, debes <strong>cambiar tu contraseña inmediatamente</strong>.</p>
-            
-            <div style="margin: 30px 0; text-align: center;">
-              <a href="${resetUrl}" 
-                 style="background-color: #4F46E5; color: white; padding: 12px 30px; 
-                        text-decoration: none; border-radius: 6px; display: inline-block;
-                        font-weight: bold;">
-                🔐 Cambiar mi contraseña ahora
-              </a>
-            </div>
-            
-            <div style="background-color: #f3f4f6; padding: 15px; border-radius: 6px; margin: 20px 0;">
-              <p style="margin: 0; font-size: 14px; color: #4b5563;">
-                <strong>📌 Recomendaciones para tu nueva contraseña:</strong>
-              </p>
-              <ul style="font-size: 14px; color: #4b5563;">
-                <li>Mínimo 8 caracteres</li>
-                <li>Combinar letras mayúsculas y minúsculas</li>
-                <li>Incluir números y símbolos</li>
-                <li>No usar información personal (nombre, fecha, matrícula, clave)</li>
-              </ul>
-            </div>
-            
-            <p style="font-size: 12px; color: #6b7280; text-align: center; margin-top: 30px;">
-              Este enlace expirará en <strong>1 hora</strong>.<br>
-              Si no solicitaste este cambio, contacta inmediatamente a soporte técnico.
-            </p>
-            
-            <hr style="margin: 20px 0;" />
-            
-            <p style="font-size: 12px; color: #9ca3af; text-align: center;">
-              © 2024 AulaUTN - Sistema de Recursos Digitales
-            </p>
-          </div>
-        `
-      })
-    })
+    // Determinar asunto según el motivo
+    let subject = ''
+    if (motivo === 'matricula') subject = '⚠️ Cambio de contraseña requerido - Seguridad'
+    else if (motivo === 'clave') subject = '⚠️ Cambio de contraseña requerido - Seguridad'
+    else subject = '⚠️ Cambio de contraseña requerido - Seguridad'
     
-    return response.ok
+    // Datos a enviar a EmailJS (solo las variables que usa tu template)
+    const templateParams = {
+      to_email: email,           // Email del destinatario
+      subject: subject,          // Asunto del correo
+      nombre: nombre,            // Nombre completo del usuario
+      tipo_usuario: tipoUsuario, // Tipo de usuario
+      enlace: resetUrl,          // Enlace para cambiar contraseña
+      identificador: identificador, // Matrícula o clave
+      fecha: new Date().toLocaleString('es-MX', {
+        dateStyle: 'full',
+        timeStyle: 'short'
+      })
+    };
+    
+    console.log('📧 Enviando correo a:', email);
+    console.log('📝 Datos:', templateParams);
+    
+    // Enviar correo usando EmailJS
+    const result = await emailjs.default.send(
+      EMAILJS_SERVICE_ID,
+      EMAILJS_TEMPLATE_ID,
+      templateParams
+    );
+    
+    console.log(`✅ Correo enviado exitosamente - Status: ${result.status}`);
+    return result.status === 200;
+    
   } catch (error) {
-    console.error('Error al enviar correo:', error)
-    return false
+    console.error('❌ Error detallado al enviar correo con EmailJS:', error);
+    return false;
   }
 }
 
 // ── Generar token para reset de password ───────────────────────
 async function generarTokenResetPassword(email: string): Promise<string> {
+  console.log('🔐 Generando token para email:', email);
+  
   const payload = {
     email,
     exp: Math.floor(Date.now() / 1000) + 3600,
     iat: Math.floor(Date.now() / 1000)
   }
+  
+  console.log('Payload del token:', payload);
+  
   const token = await firmar({ alg: 'HS256', typ: 'JWT' }, payload)
+  
+  console.log('Token generado:', token);
+  
   localStorage.setItem(`reset_${email.replace(/[^a-zA-Z0-9]/g, '_')}`, token)
   
-  await supabase
+  const { data, error } = await supabase
     .from('password_reset_tokens')
     .insert([{ email, token, expires_at: new Date(Date.now() + 3600000) }])
     .select()
+  
+  console.log('Guardado en Supabase:', { data, error });
   
   return token
 }

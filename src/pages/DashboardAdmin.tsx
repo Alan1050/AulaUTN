@@ -4,7 +4,6 @@ import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabaseClient'
 import { logout, getSesion } from '../lib/auth'
 import * as XLSX from 'xlsx'
-import jsPDF from 'jspdf'
 import 'jspdf-autotable'
 
 interface Usuario {
